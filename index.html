@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>함께 달리기</title>
+<title>뛰다보면</title>
 <meta name="description" content="교회 러닝 동아리 회원들이 달린 거리를 서로 보며 응원하는 앱">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#EEF2F5" media="(prefers-color-scheme: light)">
@@ -11,7 +11,7 @@
 <meta name="color-scheme" content="light dark">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="함께 달리기">
+<meta name="apple-mobile-web-app-title" content="뛰다보면">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -175,7 +175,7 @@ input[type="password"] { letter-spacing: .35em; }
 <body>
 <div class="app">
   <header>
-    <h1>함께 달리기</h1>
+    <h1>뛰다보면</h1>
     <p class="sub" id="subtitle">교회 러닝 동아리</p>
   </header>
 
@@ -861,7 +861,7 @@ if (typeof module !== 'undefined') module.exports = RL;
   }
   function summary() {
     var d = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
-    var L = ['[함께 달리기 시험 결과] ' + d];
+    var L = ['[뛰다보면 시험 결과] ' + d];
     L.push('위치(GPS): ' + (C.gps ? C.gps.pill + ' - ' + C.gps.text : '시험 안 함'));
     L.push('화면 켜짐 유지: ' + (C.wake ? C.wake.pill + ' - ' + C.wake.text : '시험 안 함'));
     L.push('기록 서버: ' + (C.db ? C.db.pill + ' - ' + C.db.text : '시험 안 함'));
