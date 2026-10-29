@@ -646,6 +646,27 @@ if (typeof module !== 'undefined') module.exports = RL;
     stopSignal(); unlockScreen(); clearInterval(R.tick);
     queue(function () { return B.liveClear(); });
     fillReview(); renderRun();
+    autoSave();
+  }
+  // 종료하면 바로 저장. 거리·시간이 이상하면 확인 화면에 머물러 직접 고치게 함
+  function autoSave() {
+    var v = readReview();
+    if (R.manual || !(v.km >= 0.05 && v.km <= 100) || !(v.total >= 30 && v.total <= 86400) || v.total / v.km < 120) {
+      $('revMsg').textContent = '자동으로 저장하지 못했습니다. 거리와 시간을 확인하고 저장하기를 눌러 주세요.';
+      return;
+    }
+    saveRun();
+  }
+  // 실수로 눌러도 끝나지 않도록 종료는 두 번 눌러야 함
+  var endArm = 0;
+  function endTap() {
+    var b = $('btnEnd');
+    if (!endArm || now() - endArm > 4000) {
+      endArm = now(); b.textContent = '한 번 더 누르면 종료하고 저장합니다';
+      setTimeout(function () { endArm = 0; if (R.phase === 'running') b.textContent = '종료'; }, 4000);
+      return;
+    }
+    endArm = 0; b.textContent = '종료'; finishRun();
   }
   function resumeRun() {
     if (R.phase !== 'review' || R.manual) return;
@@ -985,7 +1006,7 @@ if (typeof module !== 'undefined') module.exports = RL;
   $('btnReg').addEventListener('click', doReg);
   $('inName').addEventListener('keydown', function (e) { if (e.key === 'Enter') doReg(); });
   $('inPin').addEventListener('keydown', function (e) { if (e.key === 'Enter') doReg(); });
-  $('btnEnd').addEventListener('click', finishRun);
+  $('btnEnd').addEventListener('click', endTap);
   $('btnResume').addEventListener('click', resumeRun);
   $('btnSave').addEventListener('click', saveRun);
   $('btnDiscard').addEventListener('click', discardRun);
