@@ -286,6 +286,13 @@ input[type="password"] { letter-spacing: .35em; }
           <button type="button" class="btn btn-ghost sm" id="c-db-btn">시험하기</button>
         </div>
         <div class="trow">
+          <div class="head"><b>홈 화면에 추가</b><span class="pill" id="c-inst-pill">확인 전</span></div>
+          <p class="hint">앱처럼 아이콘을 만들어 두면 편합니다.</p>
+          <p class="detail" id="c-inst-txt"></p>
+          <button type="button" class="btn btn-ghost sm" id="c-inst-btn" hidden>앱으로 설치</button>
+          <button type="button" class="btn btn-ghost sm" id="c-inst-show">달리기 화면에 안내 다시 띄우기</button>
+        </div>
+        <div class="trow">
           <div class="head"><b>이 기기</b></div>
           <p class="detail" id="c-dev-txt"></p>
         </div>
@@ -948,6 +955,18 @@ if (typeof module !== 'undefined') module.exports = RL;
       if (k !== 'board') p.style.display = (k === t) ? 'flex' : 'none';
     });
     if (t === 'board') { renderBoard(); if (REMOTE) refresh(); }
+    if (t === 'check') renderInstallRow();
+  }
+  function renderInstallRow() {
+    var done = isStandalone();
+    setRow('inst', done ? 'ok' : 'warn', done ? '설치됨' : '아직 안 함', done ? '이미 앱으로 열려 있습니다.' : installText());
+    $('c-inst-btn').hidden = done || !deferredInstall;
+    $('c-inst-show').hidden = done;
+  }
+  async function doInstall() {
+    if (!deferredInstall) return;
+    try { deferredInstall.prompt(); await deferredInstall.userChoice; } catch (e) { }
+    deferredInstall = null; renderRun(); renderInstallRow();
   }
   function renderBanner() {
     var b = $('banner'), t = '';
@@ -1031,13 +1050,11 @@ if (typeof module !== 'undefined') module.exports = RL;
   $('c-db-btn').addEventListener('click', testDb);
   $('c-copy').addEventListener('click', copySummary);
   $('btnInstallClose').addEventListener('click', function () { jset(K_INST, true); renderRun(); });
-  $('btnInstall').addEventListener('click', async function () {
-    if (!deferredInstall) return;
-    try { deferredInstall.prompt(); await deferredInstall.userChoice; } catch (e) { }
-    deferredInstall = null; renderRun();
-  });
-  window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); deferredInstall = e; renderRun(); });
-  window.addEventListener('appinstalled', function () { deferredInstall = null; renderRun(); });
+  $('btnInstall').addEventListener('click', doInstall);
+  $('c-inst-btn').addEventListener('click', doInstall);
+  $('c-inst-show').addEventListener('click', function () { jset(K_INST, false); setTab('run'); renderRun(); });
+  window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); deferredInstall = e; renderRun(); renderInstallRow(); });
+  window.addEventListener('appinstalled', function () { deferredInstall = null; renderRun(); renderInstallRow(); });
 
   document.addEventListener('visibilitychange', function () {
     if (!document.hidden && REMOTE && R.phase === 'idle') refresh();
