@@ -171,6 +171,25 @@ input[type="password"] { letter-spacing: .35em; }
 .delbtn { background: none; border: 0; color: var(--muted); font: 500 14px var(--font-body); text-decoration: underline; min-height: 44px; padding: 0 6px; cursor: pointer; }
 .delbtn.arm { color: var(--danger); }
 </style>
+<style>
+/* 지도 */
+.mapbox { display: flex; flex-direction: column; gap: 6px; }
+.map { width: 100%; height: 250px; border-radius: 12px; border: 1px solid var(--line); overflow: hidden; background: var(--soft); position: relative; z-index: 0; }
+.map.tall { height: 56vh; min-height: 300px; }
+.map[hidden] { display: none; }
+.acts { display: inline-flex; gap: 6px; align-items: center; }
+.mapbtn { min-height: 44px; padding: 0 14px; border-radius: 999px; border: 2px solid var(--line); background: transparent; color: var(--ink); font: 600 15px var(--font-body); cursor: pointer; white-space: nowrap; }
+.modal { position: fixed; inset: 0; background: rgba(0,0,0,.62); display: flex; align-items: flex-end; justify-content: center; z-index: 50; }
+.modal[hidden] { display: none; }
+.modal .sheet { background: var(--surface); border: 1px solid var(--line); border-radius: 16px 16px 0 0; width: 100%; max-width: 560px; padding: 16px; display: flex; flex-direction: column; gap: 10px; max-height: 94vh; overflow: auto; }
+.hidechk { display: flex; gap: 10px; align-items: flex-start; font-size: 15px; color: var(--muted); }
+.hidechk input { width: 26px; height: 26px; margin-top: 1px; flex: none; }
+.mrow { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; }
+.sheet .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.leaflet-container { font: 14px var(--font-body); }
+.leaflet-tooltip { font-weight: 700; }
+</style>
+<link rel="stylesheet" href="leaflet.css">
 </head>
 <body>
 <div class="app">
@@ -216,6 +235,7 @@ input[type="password"] { letter-spacing: .35em; }
         <p class="myweek" id="myWeek"></p>
         <button type="button" id="btnStart" class="btn btn-primary btn-xl">달리기 시작</button>
         <p class="hint">시작하면 위치 사용을 묻는 창이 나올 수 있습니다. 뛰는 동안 화면을 켜 두세요.</p>
+        <label class="hidechk"><input type="checkbox" id="chkHide" checked><span>달린 길을 지도에 남길 때, 집 위치가 드러나지 않도록 <b>시작과 끝 150m</b>는 가립니다. (끄면 출발지부터 도착지까지 모두 보입니다)</span></label>
         <div class="links">
           <button type="button" id="btnSim" class="link">가상 위치로 연습</button>
           <button type="button" id="btnManual" class="link">직접 기록 입력</button>
@@ -242,6 +262,11 @@ input[type="password"] { letter-spacing: .35em; }
         </ul>
         <p id="runNote" class="notice" hidden></p>
         <button type="button" id="btnEnd" class="btn btn-ink btn-xl">종료</button>
+        <div id="mapBox" class="mapbox" hidden>
+          <div id="runMap" class="map" aria-label="달리는 길 지도"></div>
+          <p id="mapNote" class="hint" hidden></p>
+        </div>
+        <div class="mrow"><button type="button" id="btnMapToggle" class="link" hidden>지도 접기</button><button type="button" id="btnFollow" class="link" hidden>내 위치로 돌아가기</button></div>
       </div>
 
       <div id="review" class="card" hidden>
@@ -309,6 +334,16 @@ input[type="password"] { letter-spacing: .35em; }
   <div id="toast" class="toast" role="status" hidden></div>
 </div>
 
+<div id="routeView" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="rvTitle">
+  <div class="sheet">
+    <div class="row"><h2 id="rvTitle">달린 길</h2><button type="button" id="rvClose" class="link">닫기</button></div>
+    <p id="rvInfo" class="hint"></p>
+    <div id="rvMap" class="map tall"></div>
+    <p id="rvMsg" class="msg" hidden></p>
+    <p class="hint">초록 점은 출발, 빨간 점은 도착입니다. 집 위치 보호를 위해 시작과 끝 구간이 지도에서 빠져 있을 수 있습니다.</p>
+  </div>
+</div>
+<script src="leaflet.js"></script>
 <script src="config.js"></script>
 <script>const RL = (function () {
   'use strict';
@@ -440,7 +475,7 @@ if (typeof module !== 'undefined') module.exports = RL;
   // ---------- state ----------
   var sd = RL.sampleData(now());
   var S = { ready: false, uid: null, me: null, members: sd.members, runs: sd.runs, cheers: sd.cheers, live: {}, tab: 'run', editName: false, skew: 0, netErr: false, authErr: '', pending: [], regMode: 'new', lastOk: 0 };
-  var R = { phase: 'idle', start: 0, pausedTotal: 0, endAt: 0, track: RL.newTrack(), sim: false, manual: false, watch: null, simTimer: null, tick: null, wake: null, wakeState: 'wait',
+  var R = { pts: [], phase: 'idle', start: 0, pausedTotal: 0, endAt: 0, track: RL.newTrack(), sim: false, manual: false, watch: null, simTimer: null, tick: null, wake: null, wakeState: 'wait',
     gps: { state: 'wait', acc: null, last: 0 }, gaps: 0, gapSec: 0, hiddenAt: 0, lastLive: 0, lastLiveKm: -1, gpsKm: 0, saving: false, discardArm: 0, simPos: null, simSeq: 0 };
   var C = { gps: null, wake: null, db: null, dev: null };
 
@@ -470,7 +505,7 @@ if (typeof module !== 'undefined') module.exports = RL;
     allRuns().forEach(function (r) { if (r.at >= ws && r.at < we) { tot[r.uid] = (tot[r.uid] || 0) + r.km; cnt[r.uid] = (cnt[r.uid] || 0) + 1; } });
     return { ws: ws, we: we, tot: tot, cnt: cnt };
   }
-  function allRuns() { return S.pending.map(function (p) { return { id: p.rid, uid: S.uid, at: p.at, km: p.km, sec: p.sec, src: p.src, pending: true }; }).concat(S.runs); }
+  function allRuns() { return S.pending.map(function (p) { return { id: p.rid, uid: S.uid, at: p.at, km: p.km, sec: p.sec, src: p.src, pending: true, route: p.route, hasRoute: !!p.route }; }).concat(S.runs); }
   function elapsedSec() { var end = R.phase === 'running' ? now() : R.endAt; return Math.max(0, (end - R.start - R.pausedTotal) / 1000); }
   function newRid() { return 'r' + now().toString(36) + Math.random().toString(36).slice(2, 8); }
 
@@ -501,6 +536,7 @@ if (typeof module !== 'undefined') module.exports = RL;
     login: function (name, pin) { return rpc('login', { name: name, pin: pin }).then(setMe); },
     rename: function (name) { return rpc('rename', authBody({ name: name })).then(function (j) { S.me.name = j.name; jset(K_ME, S.me); S.members[S.uid] = Object.assign({}, S.members[S.uid], { name: j.name }); }); },
     addRun: function (run) { return rpc('saveRun', authBody({ run: run })); },
+    route: function (runId) { return rpc('route', authBody({ runId: runId })).then(function (j) { return j.route || ''; }); },
     deleteRun: function (id) { return rpc('deleteRun', authBody({ runId: id })).then(function () { S.runs = S.runs.filter(function (r) { return r.id !== id; }); }); },
     liveSet: function (o) { return rpc('live', authBody(o)).catch(function () { }); },
     liveClear: function () { return rpc('liveClear', authBody()).catch(function () { }); },
@@ -520,7 +556,8 @@ if (typeof module !== 'undefined') module.exports = RL;
     register: function (name) { return Promise.resolve().then(function () { S.uid = 'local'; S.members.local = { name: name, joined: now() }; S.localName = name; Local.save(); }); },
     login: function (name) { return Local.register(name); },
     rename: function (name) { S.members.local.name = name; S.localName = name; Local.save(); return Promise.resolve(); },
-    addRun: function (run) { var r = { id: run.rid, uid: S.uid, at: run.at, km: run.km, sec: run.sec, src: run.src, local: true }; S.runs.unshift(r); Local.save(); return Promise.resolve(); },
+    route: function (runId) { var r = S.runs.filter(function (x) { return x.id === runId; })[0]; return Promise.resolve((r && r.route) || ''); },
+    addRun: function (run) { var r = { id: run.rid, uid: S.uid, at: run.at, km: run.km, sec: run.sec, src: run.src, local: true, route: run.route || '', hasRoute: !!run.route }; S.runs.unshift(r); Local.save(); return Promise.resolve(); },
     deleteRun: function (id) { S.runs = S.runs.filter(function (r) { return r.id !== id; }); Local.save(); return Promise.resolve(); },
     liveSet: function (o) { S.live[S.uid] = Object.assign({ updatedAt: now() }, o); renderBoard(); return Promise.resolve(); },
     liveClear: function () { delete S.live[S.uid]; renderBoard(); return Promise.resolve(); },
@@ -579,12 +616,148 @@ if (typeof module !== 'undefined') module.exports = RL;
   }
   function unlockScreen() { try { if (R.wake) { var w = R.wake; R.wake = null; R.wakeState = 'wait'; w.release(); } } catch (e) { } }
 
+  // ---------- 지도 (달린 길) ----------
+  var K_MAPON = 'rl_map_on', K_HIDEENDS = 'rl_hide_ends';
+  var TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+  var TILE_ATTR = '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+  function mapOK() { return typeof window.L !== 'undefined' && window.L && typeof window.L.map === 'function'; }
+  function mapOn() { return jget(K_MAPON, true) !== false; }
+  function hideEnds() { return jget(K_HIDEENDS, true) !== false; }
+  function dm(a, b) { return RL.hav({ lat: a[0], lon: a[1] }, { lat: b[0], lon: b[1] }); }
+  function encNum(n) { n = n < 0 ? ~(n << 1) : (n << 1); var s = ''; while (n >= 0x20) { s += String.fromCharCode((0x20 | (n & 0x1f)) + 63); n >>= 5; } return s + String.fromCharCode(n + 63); }
+  function encPoly(pts) {
+    var out = '', pl = 0, pn = 0;
+    pts.forEach(function (p) { var la = Math.round(p[0] * 1e5), lo = Math.round(p[1] * 1e5); out += encNum(la - pl) + encNum(lo - pn); pl = la; pn = lo; });
+    return out;
+  }
+  function decPoly(s) {
+    var pts = [], i = 0, la = 0, lo = 0, n = String(s || '').length;
+    s = String(s || '');
+    function num() {
+      var r = 0, sh = 0, b;
+      do { if (i >= n) return null; b = s.charCodeAt(i++) - 63; r |= (b & 0x1f) << sh; sh += 5; } while (b >= 0x20 && sh < 35);
+      return (r & 1) ? ~(r >> 1) : (r >> 1);
+    }
+    while (i < n) {
+      var a = num(), o = num();
+      if (a === null || o === null) break;
+      la += a; lo += o;
+      var p = [la / 1e5, lo / 1e5];
+      if (isFinite(p[0]) && isFinite(p[1]) && Math.abs(p[0]) <= 90 && Math.abs(p[1]) <= 180) pts.push(p);
+    }
+    return pts;
+  }
+  function simplify(pts, tol) {
+    if (pts.length < 3) return pts.slice();
+    var k = Math.cos(pts[0][0] * Math.PI / 180);
+    function X(p) { return p[1] * 111195 * k; } function Y(p) { return p[0] * 111195; }
+    var keep = []; for (var q = 0; q < pts.length; q++) keep.push(false);
+    keep[0] = keep[pts.length - 1] = true;
+    var st = [[0, pts.length - 1]];
+    while (st.length) {
+      var s = st.pop(), a = s[0], b = s[1], ax = X(pts[a]), ay = Y(pts[a]), dx = X(pts[b]) - ax, dy = Y(pts[b]) - ay, L2 = dx * dx + dy * dy, md = -1, mi = -1;
+      for (var i = a + 1; i < b; i++) {
+        var px = X(pts[i]) - ax, py = Y(pts[i]) - ay, d;
+        if (L2 === 0) d = Math.sqrt(px * px + py * py);
+        else { var t = Math.max(0, Math.min(1, (px * dx + py * dy) / L2)), qx = px - t * dx, qy = py - t * dy; d = Math.sqrt(qx * qx + qy * qy); }
+        if (d > md) { md = d; mi = i; }
+      }
+      if (md > tol) { keep[mi] = true; st.push([a, mi], [mi, b]); }
+    }
+    return pts.filter(function (_, j) { return keep[j]; });
+  }
+  // 시작·끝 구간을 지도에서 가림 (집 위치 보호)
+  function trimEnds(pts, m) {
+    if (pts.length < 2) return pts;
+    var cum = [0]; for (var i = 1; i < pts.length; i++) cum.push(cum[i - 1] + dm(pts[i - 1], pts[i]));
+    var total = cum[cum.length - 1]; m = Math.min(m, total * 0.15);
+    return pts.filter(function (_, j) { return cum[j] >= m && cum[j] <= total - m; });
+  }
+  function buildRoute() {
+    var pts = R.pts || [];
+    if (pts.length < 2) return '';
+    if (hideEnds()) pts = trimEnds(pts, 150);
+    var tol = 4, s = simplify(pts, tol);
+    while (s.length > 450 && tol < 80) { tol *= 1.6; s = simplify(pts, tol); }
+    if (s.length < 2) return '';
+    var e = encPoly(s);
+    return e.length <= 8500 ? e : '';
+  }
+
+  var M = { map: null, line: null, dot: null, follow: true, had: false, lastDraw: 0, last: null };
+  function newMap(id) {
+    var m = L.map(id, { zoomControl: true });
+    L.tileLayer(TILE_URL, { maxZoom: 19, attribution: TILE_ATTR }).addTo(m);
+    m.setView([36.5, 127.8], 7);
+    return m;
+  }
+  function mapShow() {
+    var box = $('mapBox'); if (!box) return;
+    var tg = $('btnMapToggle'), fb = $('btnFollow'), running = R.phase === 'running', on = mapOn();
+    tg.hidden = !running; tg.textContent = on ? '지도 접기' : '지도 보기';
+    box.hidden = !(running && on);
+    if (!running) { fb.hidden = true; return; }
+    if (!on) return;
+    var note = $('mapNote');
+    if (!mapOK()) { $('runMap').hidden = true; note.hidden = false; note.textContent = '지도를 불러오지 못했습니다. 기록은 그대로 이어집니다.'; return; }
+    $('runMap').hidden = false; note.hidden = true;
+    if (!M.map) {
+      M.map = newMap('runMap');
+      M.line = L.polyline([], { color: '#0B5CAD', weight: 6, opacity: 0.9 }).addTo(M.map);
+      M.dot = L.circleMarker([0, 0], { radius: 9, color: '#ffffff', weight: 3, fillColor: '#E5484D', fillOpacity: 1 });
+      M.map.on('dragstart', function () { M.follow = false; $('btnFollow').hidden = false; });
+    }
+    setTimeout(function () { if (M.map) M.map.invalidateSize(); }, 60);
+    if (R.pts && R.pts.length) M.line.setLatLngs(R.pts);
+    if (M.last && !M.had) { M.map.setView(M.last, 17); M.had = true; if (!M.dot._map) M.dot.addTo(M.map); M.dot.setLatLng(M.last); }
+  }
+  function mapUpdate(p) {
+    M.last = [p.lat, p.lon];
+    if (!M.map || R.phase !== 'running' || !mapOn() || $('mapBox').hidden) return;
+    var t = now(); if (t - M.lastDraw < 1000) return; M.lastDraw = t;
+    M.line.setLatLngs(R.pts);
+    if (!M.dot._map) M.dot.addTo(M.map);
+    M.dot.setLatLng(M.last);
+    if (M.follow) { if (!M.had) { M.map.setView(M.last, 17); M.had = true; } else M.map.panTo(M.last, { animate: false }); }
+  }
+
+  var RV = { map: null, group: null, cache: {}, seq: 0 };
+  function closeRoute() { $('routeView').hidden = true; RV.seq++; }
+  async function openRoute(runId) {
+    var r = allRuns().filter(function (x) { return x.id === runId; })[0] || {};
+    var seq = ++RV.seq, msg = $('rvMsg');
+    $('rvTitle').textContent = nameOf(r.uid) + '님이 달린 길';
+    $('rvInfo').textContent = (r.km ? Number(r.km).toFixed(2) + 'km' : '') + (r.at ? ' · ' + RL.dateLabel(r.at) : '');
+    msg.hidden = true; msg.textContent = '';
+    $('routeView').hidden = false;
+    if (!mapOK()) { msg.hidden = false; msg.textContent = '지도를 불러오지 못했습니다. 인터넷 연결을 확인하고 앱을 다시 열어 주세요.'; return; }
+    if (!RV.map) { RV.map = newMap('rvMap'); RV.group = L.layerGroup().addTo(RV.map); }
+    RV.group.clearLayers(); RV.map.setView([36.5, 127.8], 7);
+    setTimeout(function () { if (RV.map) RV.map.invalidateSize(); }, 50);
+    var enc = RV.cache[runId] || r.route || '';
+    if (!enc) {
+      msg.hidden = false; msg.textContent = '길을 불러오는 중…';
+      try { enc = await B.route(runId); } catch (e) { if (seq === RV.seq) msg.textContent = errText(e); return; }
+      if (enc) RV.cache[runId] = enc;
+    }
+    if (seq !== RV.seq) return;
+    var pts = decPoly(enc);
+    if (pts.length < 2) { msg.hidden = false; msg.textContent = '이 기록에는 지도에 표시할 길이 없습니다.'; return; }
+    msg.hidden = true;
+    var line = L.polyline(pts, { color: '#0B5CAD', weight: 6, opacity: 0.9 }).addTo(RV.group);
+    L.circleMarker(pts[0], { radius: 9, color: '#ffffff', weight: 3, fillColor: '#2E9E5B', fillOpacity: 1 }).bindTooltip('출발', { permanent: true, direction: 'top', offset: [0, -8] }).addTo(RV.group);
+    L.circleMarker(pts[pts.length - 1], { radius: 9, color: '#ffffff', weight: 3, fillColor: '#E5484D', fillOpacity: 1 }).bindTooltip('도착', { permanent: true, direction: 'top', offset: [0, -8] }).addTo(RV.group);
+    setTimeout(function () { if (!RV.map) return; RV.map.invalidateSize(); RV.map.fitBounds(line.getBounds(), { padding: [34, 34], maxZoom: 18 }); }, 90);
+  }
+
   // ---------- run engine ----------
   var rnd = function () { return Math.random() + Math.random() - 1; };
   function onPos(p) {
     if (R.phase !== 'running') return;
     R.gps.acc = p.acc; R.gps.last = now(); R.gps.state = p.acc <= 15 ? 'good' : 'weak';
-    RL.step(R.track, p);
+    var st = RL.step(R.track, p);
+    if (st === 'ok' || st === 'first' || st === 'reanchor') R.pts.push([p.lat, p.lon]);
+    if (st !== 'acc') mapUpdate(p);
   }
   function simStep() {
     var s = R.simPos, cosL = Math.cos(s.lat * Math.PI / 180);
@@ -611,7 +784,7 @@ if (typeof module !== 'undefined') module.exports = RL;
   }
   function startRun(sim) {
     if (R.phase !== 'idle') return;
-    R.phase = 'running'; R.start = now(); R.pausedTotal = 0; R.endAt = 0; R.track = RL.newTrack(); R.sim = !!sim; R.manual = false;
+    R.phase = 'running'; R.start = now(); R.pausedTotal = 0; R.endAt = 0; R.track = RL.newTrack(); R.sim = !!sim; R.manual = false; R.pts = []; M.follow = true; M.had = false; M.last = null; if (M.line) M.line.setLatLngs([]); $('btnFollow').hidden = true;
     R.gps = { state: 'wait', acc: null, last: 0 }; R.gaps = 0; R.gapSec = 0; R.hiddenAt = 0; R.lastLive = 0; R.lastLiveKm = -1; R.wakeState = 'wait';
     lockScreen(); beginSignal();
     R.tick = setInterval(tickUI, 500);
@@ -686,7 +859,7 @@ if (typeof module !== 'undefined') module.exports = RL;
   }
   function openManual() {
     if (R.phase !== 'idle') return;
-    R.phase = 'review'; R.manual = true; R.sim = false; R.track = RL.newTrack(); R.gpsKm = 0;
+    R.phase = 'review'; R.manual = true; R.sim = false; R.track = RL.newTrack(); R.gpsKm = 0; R.pts = [];
     $('revTitle').textContent = '직접 기록 입력';
     $('revSrc').textContent = '달리기를 마친 뒤 거리와 시간을 적어 주세요. 러닝 시계 기록을 옮겨 적어도 됩니다.';
     $('inDist').value = ''; $('inMin').value = ''; $('inSec').value = '0';
@@ -716,6 +889,7 @@ if (typeof module !== 'undefined') module.exports = RL;
     msg.textContent = '';
     var src = R.sim ? 'sim' : (R.manual || Math.abs(v.km - R.gpsKm) > 0.05) ? 'manual' : 'gps';
     var run = { rid: newRid(), at: R.manual ? now() : R.endAt, km: Math.round(v.km * 1000) / 1000, sec: v.total, src: src, gaps: R.gaps || 0 };
+    var rt = R.manual ? '' : buildRoute(); if (rt) run.route = rt;
     R.saving = true; $('btnSave').disabled = true; $('btnSave').textContent = '저장 중…';
     try {
       await B.addRun(run);
@@ -777,6 +951,7 @@ if (typeof module !== 'undefined') module.exports = RL;
     return '폰의 브라우저 메뉴에서 ‘홈 화면에 추가’를 선택하면 앱처럼 아이콘이 생깁니다.';
   }
   function renderRun() {
+    mapShow();
     var boot = !S.ready, idle = R.phase === 'idle';
     var needReg = !boot && idle && (!registered() || S.editName);
     $('boot').hidden = !boot;
@@ -872,6 +1047,7 @@ if (typeof module !== 'undefined') module.exports = RL;
         if (r.pending) act = '<span class="hint">연결되면 올립니다</span>';
         else if (own) act = '<span><span class="hint">응원 ' + cnt + '</span> <button type="button" class="delbtn" data-del="' + esc(r.id) + '">삭제</button></span>';
         else act = '<button type="button" class="cheer' + (mine ? ' on' : '') + '" data-cheer="' + esc(r.id) + '" aria-pressed="' + mine + '">' + (mine ? '응원함 ' : '응원 ') + cnt + '</button>';
+        if (r.hasRoute) act = '<span class="acts"><button type="button" class="mapbtn" data-route="' + esc(r.id) + '">지도</button>' + act + '</span>';
         return '<li><div class="l1"><span class="nm">' + esc(nameOf(r.uid)) + (own ? '<span class="tag me">나</span>' : '') + chipFor(r.src, sampleFlag, r.pending) + '</span><span class="dist">' + Number(r.km).toFixed(2) + '<small>km</small></span></div>' +
           '<div class="l2"><span>' + esc(RL.whenLabel(r.at, serverNow())) + ' · ' + RL.fmtDur(r.sec) + ' · 1km당 ' + RL.fmtPace(r.sec / r.km) + '</span>' + act + '</div></li>';
       }).join('') + '</ul>';
@@ -1001,6 +1177,13 @@ if (typeof module !== 'undefined') module.exports = RL;
     var b = e.target.closest('button[data-tab]'); if (b) setTab(b.getAttribute('data-tab'));
   });
   $('btnStart').addEventListener('click', function () { startRun(false); });
+  $('chkHide').checked = hideEnds();
+  $('chkHide').addEventListener('change', function () { jset(K_HIDEENDS, $('chkHide').checked); });
+  $('btnMapToggle').addEventListener('click', function () { jset(K_MAPON, !mapOn()); mapShow(); });
+  $('btnFollow').addEventListener('click', function () { M.follow = true; $('btnFollow').hidden = true; if (M.map && M.last) M.map.panTo(M.last, { animate: false }); });
+  $('rvClose').addEventListener('click', closeRoute);
+  $('routeView').addEventListener('click', function (e) { if (e.target === $('routeView')) closeRoute(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('routeView').hidden) closeRoute(); });
   $('btnSim').addEventListener('click', function () { startRun(true); });
   $('btnManual').addEventListener('click', openManual);
   $('btnRename').addEventListener('click', function () { S.editName = true; $('inName').value = myName(); renderRun(); $('inName').focus(); });
@@ -1031,6 +1214,8 @@ if (typeof module !== 'undefined') module.exports = RL;
   $('btnDiscard').addEventListener('click', discardRun);
   ['inDist', 'inMin', 'inSec'].forEach(function (id) { $(id).addEventListener('input', updateRevPace); });
   $('p-board').addEventListener('click', async function (e) {
+    var mp = e.target.closest('button[data-route]');
+    if (mp) { openRoute(mp.getAttribute('data-route')); return; }
     var c = e.target.closest('button[data-cheer]');
     if (c && !c.disabled) {
       c.disabled = true;

@@ -1,9 +1,10 @@
 // 앱 화면 파일을 폰에 보관해 두는 서비스 워커 (서버 요청은 건드리지 않음)
-const CACHE = 'rl-shell-v3';
-const SHELL = ['./', 'index.html', 'config.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
+const CACHE = 'rl-shell-v4';
+const SHELL = ['./', 'index.html', 'config.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'leaflet.js', 'leaflet.css'];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  // 파일 하나가 없어도 설치가 멈추지 않도록 하나씩 보관
+  e.waitUntil(caches.open(CACHE).then(c => Promise.all(SHELL.map(u => c.add(u).catch(() => {})))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', e => {
