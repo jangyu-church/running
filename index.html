@@ -192,6 +192,22 @@ input[type="password"] { letter-spacing: .35em; }
 .kpin i { display: block; width: 18px; height: 18px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.28); }
 .leaflet-container { font: 14px var(--font-body); }
 .leaflet-tooltip { font-weight: 700; }
+.annc { padding: 14px 16px; border-radius: 14px; background: var(--soft); border: 2px solid var(--accent); display: flex; flex-direction: column; gap: 6px; }
+.annc .at { font: 700 15px var(--font-body); color: var(--accent); }
+.annc .tx { font-size: 20px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
+.annc .by { font-size: 14px; color: var(--muted); margin: 0; }
+.annc .edit { align-self: flex-start; width: auto; }
+.msgform { display: flex; gap: 8px; }
+.msgform input { flex: 1; min-width: 0; font-size: 20px; }
+.msgform .btn { width: auto; min-width: 92px; font-size: 19px; }
+.msgs { list-style: none; margin: 0; padding: 0; }
+.msgs > li { display: flex; flex-direction: column; gap: 2px; }
+.msgs .who { font: 500 15px var(--font-body); color: var(--muted); display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+.msgs .tx { font-size: 20px; margin: 0; overflow-wrap: anywhere; }
+.adm ul { list-style: none; margin: 0; padding: 0; }
+.adm li { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 18px; }
+.adm select { width: 100%; min-height: 56px; border: 2px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); font: 500 20px var(--font-body); padding: 0 10px; }
+#noticeText { width: 100%; min-height: 160px; border: 2px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); font: 500 20px/1.5 var(--font-body); padding: 12px 14px; resize: vertical; }
 </style>
 <link rel="stylesheet" href="leaflet.css">
 </head>
@@ -212,6 +228,7 @@ input[type="password"] { letter-spacing: .35em; }
 
   <main>
     <section id="p-run" role="tabpanel" aria-labelledby="t-run" style="display:flex;flex-direction:column;gap:14px">
+      <div id="noticeRun"></div>
       <p id="boot" class="hint">불러오는 중…</p>
 
       <div id="reg" class="card" hidden>
@@ -291,9 +308,38 @@ input[type="password"] { letter-spacing: .35em; }
       </div>
     </section>
 
-    <section id="p-board" role="tabpanel" aria-labelledby="t-board" hidden></section>
+    <section id="p-board" role="tabpanel" aria-labelledby="t-board" hidden>
+      <div class="board">
+        <div id="noticeBoard"></div>
+        <div id="boardA" class="board"></div>
+        <div class="sec" id="msgSec">
+          <h2>응원 한마디</h2>
+          <div class="msgform" id="msgForm">
+            <input id="msgIn" type="text" maxlength="60" placeholder="한마디를 남겨 보세요" autocomplete="off" enterkeyhint="send" aria-label="응원 한마디">
+            <button type="button" class="btn btn-primary" id="msgSend">올리기</button>
+          </div>
+          <p id="msgErr" class="msg" role="alert"></p>
+          <p id="msgHint" class="hint"></p>
+          <ul class="list msgs" id="msgList"></ul>
+          <button type="button" class="link" id="msgMore" hidden>더 보기</button>
+        </div>
+        <div id="boardB" class="board"></div>
+      </div>
+    </section>
 
     <section id="p-check" role="tabpanel" aria-labelledby="t-check" hidden style="flex-direction:column;gap:14px">
+      <div id="adminSec" class="card adm" hidden>
+        <h2>운영진 관리</h2>
+        <p class="hint">운영진은 공지를 올리고 모든 한마디를 지울 수 있습니다. 대표 외에 2명까지 추가할 수 있습니다.</p>
+        <ul class="list" id="adminList"></ul>
+        <div id="adminAddBox">
+          <label for="adminSel">운영진으로 추가할 회원</label>
+          <select id="adminSel"></select>
+          <button type="button" class="btn btn-ghost sm" id="adminAdd" style="margin-top:10px">운영진으로 추가</button>
+        </div>
+        <p id="adminFull" class="hint" hidden></p>
+        <p id="adminMsg" class="msg" role="alert"></p>
+      </div>
       <p class="hint">뛰기 전에 이 폰에서 꼭 필요한 기능이 되는지 확인하는 화면입니다. 아래 항목을 차례로 눌러 보세요.</p>
       <div class="list">
         <div class="trow">
@@ -344,6 +390,16 @@ input[type="password"] { letter-spacing: .35em; }
   <div id="toast" class="toast" role="status" hidden></div>
 </div>
 
+<div id="noticeEdit" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="neTitle">
+  <div class="sheet">
+    <div class="row"><h2 id="neTitle">공지 쓰기</h2><button type="button" id="neClose" class="link">닫기</button></div>
+    <textarea id="noticeText" maxlength="300" placeholder="회원 모두에게 보일 공지를 적어 주세요 (300자까지)"></textarea>
+    <p class="hint" id="neCount">0 / 300</p>
+    <p id="neMsg" class="msg" role="alert"></p>
+    <button type="button" id="neSave" class="btn btn-primary">공지 올리기</button>
+    <button type="button" id="neClear" class="btn btn-ghost danger">공지 내리기</button>
+  </div>
+</div>
 <div id="routeView" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="rvTitle">
   <div class="sheet">
     <div class="row"><h2 id="rvTitle">달린 길</h2><button type="button" id="rvClose" class="link">닫기</button></div>
@@ -361,7 +417,7 @@ input[type="password"] { letter-spacing: .35em; }
   const R_EARTH = 6371008.8;
   const KST = 9 * 3600e3;
   const DAY = 86400e3;
-  const OPT = { maxAcc: 30, maxSpeed: 8, minMove: 5, accFactor: 2, reanchor: 3 };
+  const OPT = { maxAcc: 30, maxSpeed: 8, minMove: 5, accFactor: 2, reanchor: 3, gapSec: 25, estMinSec: 60, estMaxSpeed: 5 };
 
   function hav(a, b) {
     const r = Math.PI / 180;
@@ -371,13 +427,14 @@ input[type="password"] { letter-spacing: .35em; }
   }
 
   function newTrack() {
-    return { last: null, total: 0, jumps: 0, jumpAnchor: null, skipped: { acc: 0, jump: 0, still: 0 } };
+    return { last: null, seen: 0, total: 0, mv: 0, mvSec: 0, est: 0, gaps: 0, jumps: 0, jumpAnchor: null, skipped: { acc: 0, jump: 0, still: 0 } };
   }
 
   // One GPS reading in. Returns why it was or wasn't counted.
   function step(t, p, o) {
     o = Object.assign({}, OPT, o || {});
     if (!(p.acc <= o.maxAcc)) { t.skipped.acc++; return 'acc'; }
+    const gapDt = t.seen ? (p.t - t.seen) / 1000 : 0; t.seen = p.t;
     if (!t.last) { t.last = p; return 'first'; }
     const dt = (p.t - t.last.t) / 1000;
     if (dt <= 0) return 'time';
@@ -390,8 +447,15 @@ input[type="password"] { letter-spacing: .35em; }
       return 'jump';
     }
     t.jumpAnchor = null; t.jumps = 0;
+    // 화면이 꺼지는 등으로 위치를 한동안 못 받은 구간: 직선거리와, 직전까지 달린 평균 속도로 갔을 거리 중 큰 쪽을 쓴다
+    if (gapDt > o.gapSec) {
+      let add = d;
+      if (t.mvSec >= o.estMinSec) { const guess = Math.min(t.mv / t.mvSec, o.estMaxSpeed) * gapDt; if (guess > d) add = guess; }
+      t.est += add - d; t.gaps++; t.total += add; t.last = p;
+      return 'gap';
+    }
     if (d < Math.max(o.minMove, p.acc * o.accFactor)) { t.skipped.still++; return 'still'; }
-    t.total += d; t.last = p;
+    t.total += d; t.mv += d; t.mvSec += dt; t.last = p;
     return 'ok';
   }
 
@@ -485,7 +549,7 @@ if (typeof module !== 'undefined') module.exports = RL;
 
   // ---------- state ----------
   var sd = RL.sampleData(now());
-  var S = { ready: false, uid: null, me: null, members: sd.members, runs: sd.runs, cheers: sd.cheers, live: {}, tab: 'run', editName: false, skew: 0, netErr: false, authErr: '', pending: [], regMode: 'new', lastOk: 0 };
+  var S = { ready: false, uid: null, me: null, members: sd.members, runs: sd.runs, cheers: sd.cheers, live: {}, tab: 'run', editName: false, skew: 0, netErr: false, authErr: '', pending: [], regMode: 'new', lastOk: 0, admins: [], notice: null, msgs: [] };
   var R = { pts: [], phase: 'idle', start: 0, pausedTotal: 0, endAt: 0, track: RL.newTrack(), sim: false, manual: false, watch: null, simTimer: null, tick: null, wake: null, wakeState: 'wait',
     gps: { state: 'wait', acc: null, last: 0 }, gaps: 0, gapSec: 0, hiddenAt: 0, lastLive: 0, lastLiveKm: -1, gpsKm: 0, saving: false, discardArm: 0, simPos: null, simSeq: 0 };
   var C = { gps: null, wake: null, db: null, dev: null };
@@ -510,7 +574,7 @@ if (typeof module !== 'undefined') module.exports = RL;
     net: '전파가 약해 서버와 연결하지 못했습니다.',
     server: '서버에 문제가 생겼습니다. 잠시 뒤 다시 시도해 주세요.'
   };
-  function errText(e) { return (e && ERR[e.error]) || (e && e.message) || ERR.server; }
+  function errText(e) { if (e && e.error === 'forbidden' && e.message) return e.message; return (e && ERR[e.error]) || (e && e.message) || ERR.server; }
   function weekly() {
     var ws = RL.weekStart(now()), we = ws + 7 * 864e5, tot = {}, cnt = {};
     allRuns().forEach(function (r) { if (r.at >= ws && r.at < we) { tot[r.uid] = (tot[r.uid] || 0) + r.km; cnt[r.uid] = (cnt[r.uid] || 0) + 1; } });
@@ -539,7 +603,7 @@ if (typeof module !== 'undefined') module.exports = RL;
     refresh: function () {
       return netFetch(API + (API.indexOf('?') < 0 ? '?' : '&') + 'action=state&_=' + now(), { method: 'GET' }).then(function (j) {
         if (!j || j.ok !== true) throw { error: 'server' };
-        S.skew = j.now - now(); S.members = j.members; S.runs = j.runs; S.live = j.live; S.cheers = j.cheers; S.ready = true; S.netErr = false; S.lastOk = now();
+        S.skew = j.now - now(); S.members = j.members; S.runs = j.runs; S.live = j.live; S.cheers = j.cheers; S.admins = j.admins || []; S.notice = j.notice || null; S.msgs = j.msgs || []; S.ready = true; S.netErr = false; S.lastOk = now();
         if (S.me && !S.members[S.me.id]) { S.authErr = '등록 정보를 찾지 못했습니다. 다시 연결해 주세요.'; S.me = null; S.uid = null; jset(K_ME, null); }
       });
     },
@@ -551,6 +615,10 @@ if (typeof module !== 'undefined') module.exports = RL;
     deleteRun: function (id) { return rpc('deleteRun', authBody({ runId: id })).then(function () { S.runs = S.runs.filter(function (r) { return r.id !== id; }); }); },
     liveSet: function (o) { return rpc('live', authBody(o)).catch(function () { }); },
     liveClear: function () { return rpc('liveClear', authBody()).catch(function () { }); },
+    setNotice: function (text) { return rpc('setNotice', authBody({ text: text })).then(function (j) { S.notice = j.notice || null; }); },
+    postMsg: function (text) { return rpc('postMsg', authBody({ text: text })).then(function (j) { S.msgs.unshift(j.msg); }); },
+    deleteMsg: function (id) { return rpc('deleteMsg', authBody({ msgId: id })).then(function () { S.msgs = S.msgs.filter(function (m) { return m.id !== id; }); }); },
+    adminOp: function (op, uid) { return rpc('admin', authBody({ op: op, uid: uid })).then(function (j) { S.admins = j.admins || []; }); },
     cheer: function (runId) {
       var key = runId + '_' + S.uid, was = !!S.cheers[key];
       if (was) delete S.cheers[key]; else S.cheers[key] = { runId: runId, from: S.uid };
@@ -570,12 +638,16 @@ if (typeof module !== 'undefined') module.exports = RL;
     route: function (runId) { var r = S.runs.filter(function (x) { return x.id === runId; })[0]; return Promise.resolve((r && r.route) || ''); },
     addRun: function (run) { var r = { id: run.rid, uid: S.uid, at: run.at, km: run.km, sec: run.sec, src: run.src, local: true, route: run.route || '', hasRoute: !!run.route }; S.runs.unshift(r); Local.save(); return Promise.resolve(); },
     deleteRun: function (id) { S.runs = S.runs.filter(function (r) { return r.id !== id; }); Local.save(); return Promise.resolve(); },
+    setNotice: function () { return Promise.reject({ error: 'forbidden', message: '체험 모드에서는 공지를 올릴 수 없습니다.' }); },
+    postMsg: function (text) { S.msgs.unshift({ id: 'l' + now(), uid: S.uid, text: text, at: now(), local: true }); Local.save(); return Promise.resolve(); },
+    deleteMsg: function (id) { S.msgs = S.msgs.filter(function (m) { return m.id !== id; }); Local.save(); return Promise.resolve(); },
+    adminOp: function () { return Promise.reject({ error: 'forbidden', message: '체험 모드에서는 쓸 수 없습니다.' }); },
     liveSet: function (o) { S.live[S.uid] = Object.assign({ updatedAt: now() }, o); renderBoard(); return Promise.resolve(); },
     liveClear: function () { delete S.live[S.uid]; renderBoard(); return Promise.resolve(); },
     cheer: function (runId) { var k = runId + '_' + S.uid; if (S.cheers[k]) delete S.cheers[k]; else S.cheers[k] = { runId: runId, from: S.uid, local: true }; Local.save(); renderBoard(); return Promise.resolve(); },
     save: function () {
       jset(K_LOCAL, {
-        name: S.localName, runs: S.runs.filter(function (r) { return r.local; }),
+        name: S.localName, runs: S.runs.filter(function (r) { return r.local; }), msgs: S.msgs.filter(function (m) { return m.local; }),
         cheers: Object.keys(S.cheers).filter(function (k) { return S.cheers[k].local; }).reduce(function (o, k) { o[k] = S.cheers[k]; return o; }, {})
       });
     },
@@ -583,6 +655,7 @@ if (typeof module !== 'undefined') module.exports = RL;
       var ld = jget(K_LOCAL, {}); S.uid = 'local';
       if (ld.name) { S.localName = ld.name; S.members.local = { name: ld.name, joined: now() }; }
       (ld.runs || []).forEach(function (r) { S.runs.push(r); });
+      S.msgs = ld.msgs || [];
       Object.keys(ld.cheers || {}).forEach(function (k) { S.cheers[k] = ld.cheers[k]; });
     }
   };
@@ -882,7 +955,7 @@ if (typeof module !== 'undefined') module.exports = RL;
     if (R.phase !== 'running') return;
     R.gps.acc = p.acc; R.gps.last = now(); R.gps.state = p.acc <= 15 ? 'good' : 'weak';
     var st = RL.step(R.track, p);
-    if (st === 'ok' || st === 'first' || st === 'reanchor') R.pts.push([p.lat, p.lon]);
+    if (st === 'ok' || st === 'first' || st === 'reanchor' || st === 'gap') R.pts.push([p.lat, p.lon]);
     if (st !== 'acc') mapUpdate(p);
   }
   function simStep() {
@@ -939,7 +1012,7 @@ if (typeof module !== 'undefined') module.exports = RL;
     var src;
     if (R.sim) src = '연습 모드로 만든 가상 기록입니다.';
     else if (R.track.total < 50 && (R.gps.state === 'denied' || R.gps.state === 'unsupported' || R.gps.state === 'nogps')) src = '위치를 읽지 못해 거리를 재지 못했습니다. 거리를 직접 입력해 주세요.';
-    else src = 'GPS로 잰 거리입니다. 맞지 않으면 고쳐 주세요.';
+    else src = 'GPS로 잰 거리입니다.' + (R.track.est >= 20 ? ' 화면이 꺼져 있던 구간 약 ' + Math.round(R.track.est) + 'm는 직전 속도로 달렸다고 보고 더한 추정값입니다.' : '') + ' 맞지 않으면 고쳐 주세요.';
     $('revSrc').textContent = src;
     $('revTitle').textContent = '기록 확인';
     $('btnResume').hidden = false;
@@ -1018,8 +1091,9 @@ if (typeof module !== 'undefined') module.exports = RL;
     var rt = R.manual ? '' : buildRoute(); if (rt) run.route = rt;
     R.saving = true; $('btnSave').disabled = true; $('btnSave').textContent = '저장 중…';
     try {
+      var estM = Math.round((R.track && R.track.est) || 0);
       await B.addRun(run);
-      toast('기록을 저장했습니다. 수고하셨습니다!');
+      toast('기록을 저장했습니다. 수고하셨습니다!' + (estM >= 20 && !R.manual ? ' (화면이 꺼진 구간 약 ' + estM + 'm는 추정값입니다)' : ''));
       resetRun(); setTab('board'); renderAll(); if (REMOTE) refresh();
     } catch (e) {
       if (REMOTE && e && e.error === 'net') {
@@ -1057,7 +1131,7 @@ if (typeof module !== 'undefined') module.exports = RL;
     var wc = $('chipWake'); wc.className = 'chip ' + w[0]; wc.textContent = w[1];
     var note = $('runNote'), t = '';
     if (R.gps.state === 'denied' || R.gps.state === 'unsupported' || R.gps.state === 'nogps') t = '거리를 잴 수 없습니다. 종료할 때 거리를 직접 입력해 주세요.';
-    else if (R.gaps > 0) t = '화면이 꺼져 있던 시간이 ' + Math.round(R.gapSec) + '초 있었습니다. 그동안의 거리는 기록되지 않았을 수 있어요.';
+    else if (R.gaps > 0) t = '화면이 꺼져 있던 시간이 ' + Math.round(R.gapSec) + '초 있었습니다.' + (R.track.est >= 5 ? ' 그 구간은 직전 속도로 달린 것으로 보고 약 ' + Math.round(R.track.est) + 'm를 더해 계산했습니다.' : (R.track.gaps > 0 ? ' 그 구간은 처음과 끝 위치를 직선으로 이어 계산했습니다.' : ' 그동안의 거리는 기록되지 않았을 수 있어요.'));
     note.hidden = !t; note.textContent = t;
   }
   function tickUI() {
@@ -1077,7 +1151,7 @@ if (typeof module !== 'undefined') module.exports = RL;
     return '폰의 브라우저 메뉴에서 ‘홈 화면에 추가’를 선택하면 앱처럼 아이콘이 생깁니다.';
   }
   function renderRun() {
-    mapShow();
+    mapShow(); renderNotice();
     var boot = !S.ready, idle = R.phase === 'idle';
     var needReg = !boot && idle && (!registered() || S.editName);
     $('boot').hidden = !boot;
@@ -1136,7 +1210,7 @@ if (typeof module !== 'undefined') module.exports = RL;
       if (c.from === S.uid) cheerMine[c.runId] = true;
     });
 
-    var h = '<div class="board">';
+    var h = '';
     h += '<div class="sec hero"><p class="range">이번 주 ' + esc(RL.dateLabel(w.ws)) + ' ~ ' + esc(RL.dateLabel(w.we - 1)) + '</p>' +
       '<p class="total">' + sum.toFixed(1) + '<small>km</small></p>' +
       '<p class="meta">함께 달린 거리 · ' + active + '명 · ' + runsN + '회</p></div>';
@@ -1151,6 +1225,7 @@ if (typeof module !== 'undefined') module.exports = RL;
       h += '<div class="list"><p class="empty">지금 뛰는 분이 없습니다. 달리기를 시작하면 여기에 나타납니다.</p></div>';
     }
     h += '</div>';
+    $('boardA').innerHTML = h; h = '';
 
     h += '<div class="sec"><h2>이번 주 순위</h2>';
     if (rows.length) {
@@ -1180,8 +1255,90 @@ if (typeof module !== 'undefined') module.exports = RL;
     } else {
       h += '<div class="list"><p class="empty">아직 기록이 없습니다. 첫 기록을 남겨 보세요.</p></div>';
     }
-    h += '</div></div>';
-    el.innerHTML = h;
+    h += '</div>';
+    $('boardB').innerHTML = h;
+    renderNotice(); renderMsgs();
+  }
+
+
+  // ---------- 공지 · 응원 한마디 · 운영진 ----------
+  var ADMIN_EXTRA_MAX = 2;
+  function isAdmin() { return !!(S.uid && (S.admins || []).indexOf(S.uid) >= 0); }
+  function isOwner() { return !!(S.uid && (S.admins || [])[0] === S.uid); }
+  function noticeHtml(withBtn) {
+    var n = S.notice, h = '';
+    if (n && n.text) {
+      h = '<div class="annc"><span class="at">공지</span><p class="tx">' + esc(n.text) + '</p><p class="by">' + esc(n.by || '') + ' · ' + esc(RL.whenLabel(n.at, serverNow())) + '</p>' +
+        (withBtn && isAdmin() ? '<button type="button" class="btn btn-ghost sm edit" data-notice-edit="1">공지 고치기</button>' : '') + '</div>';
+    } else if (withBtn && isAdmin()) {
+      h = '<button type="button" class="btn btn-ghost sm" data-notice-edit="1">공지 올리기</button>';
+    }
+    return h;
+  }
+  function renderNotice() {
+    var nb = $('noticeBoard'); if (nb) nb.innerHTML = noticeHtml(true);
+    var nr = $('noticeRun'); if (nr) nr.innerHTML = R.phase === 'idle' ? noticeHtml(false) : '';
+  }
+  var MSG_SHOW = 8, msgAll = false;
+  function renderMsgs() {
+    var ul = $('msgList'); if (!ul) return;
+    var list = S.msgs || [], show = msgAll ? list : list.slice(0, MSG_SHOW);
+    ul.innerHTML = list.length ? show.map(function (m) {
+      var mine = m.uid === S.uid, can = mine || isAdmin();
+      return '<li><div class="who"><span>' + esc(nameOf(m.uid)) + (mine ? '<span class="tag me">나</span>' : '') + ' · ' + esc(RL.whenLabel(m.at, serverNow())) + '</span>' +
+        (can ? '<button type="button" class="delbtn" data-msgdel="' + esc(m.id) + '">지우기</button>' : '') + '</div><p class="tx">' + esc(m.text) + '</p></li>';
+    }).join('') : '<li><p class="empty">아직 글이 없습니다. 첫 응원 한마디를 남겨 보세요.</p></li>';
+    var more = $('msgMore'); more.hidden = list.length <= MSG_SHOW; more.textContent = msgAll ? '접기' : '더 보기 (' + (list.length - MSG_SHOW) + '개)';
+    var can2 = registered(); $('msgForm').hidden = !can2; $('msgHint').textContent = can2 ? '' : '달리기 화면에서 이름을 등록하면 한마디를 쓸 수 있습니다.';
+  }
+  async function sendMsg() {
+    if (!registered()) return;
+    var inp = $('msgIn'), t = inp.value.replace(/\s+/g, ' ').trim(), err = $('msgErr');
+    if (!t) { err.textContent = '내용을 적어 주세요.'; return; }
+    err.textContent = ''; $('msgSend').disabled = true;
+    try { await B.postMsg(t); inp.value = ''; toast('한마디를 올렸습니다.'); }
+    catch (e) { err.textContent = errText(e); }
+    $('msgSend').disabled = false; renderMsgs();
+  }
+  function openNoticeEdit() {
+    $('noticeText').value = (S.notice && S.notice.text) || ''; $('neMsg').textContent = ''; neCount();
+    $('neTitle').textContent = S.notice && S.notice.text ? '공지 고치기' : '공지 쓰기';
+    $('neClear').hidden = !(S.notice && S.notice.text);
+    $('noticeEdit').hidden = false; setTimeout(function () { $('noticeText').focus(); }, 50);
+  }
+  function closeNoticeEdit() { $('noticeEdit').hidden = true; }
+  function neCount() { $('neCount').textContent = $('noticeText').value.length + ' / 300'; }
+  async function saveNotice(clear) {
+    var t = clear ? '' : $('noticeText').value.trim(), msg = $('neMsg');
+    if (!clear && !t) { msg.textContent = '내용을 적어 주세요. 공지를 없애려면 ‘공지 내리기’를 눌러 주세요.'; return; }
+    msg.textContent = ''; $('neSave').disabled = true; $('neClear').disabled = true;
+    try { await B.setNotice(t); closeNoticeEdit(); toast(clear ? '공지를 내렸습니다.' : '공지를 올렸습니다.'); renderAll(); }
+    catch (e) { msg.textContent = errText(e); }
+    $('neSave').disabled = false; $('neClear').disabled = false;
+  }
+  function renderAdmins() {
+    var box = $('adminSec'); if (!box) return;
+    box.hidden = !(REMOTE && isOwner());
+    if (box.hidden) return;
+    var ids = S.admins || [], extra = ids.length - 1;
+    $('adminList').innerHTML = ids.map(function (id, i) {
+      return '<li><span>' + esc(nameOf(id)) + (i === 0 ? '<span class="tag me">대표</span>' : '') + '</span>' +
+        (i === 0 ? '' : '<button type="button" class="delbtn" data-admdel="' + esc(id) + '">빼기</button>') + '</li>';
+    }).join('');
+    var full = extra >= ADMIN_EXTRA_MAX; $('adminAddBox').hidden = full;
+    $('adminFull').hidden = !full; $('adminFull').textContent = full ? '운영진 ' + ADMIN_EXTRA_MAX + '명이 모두 채워졌습니다. 바꾸려면 먼저 한 명을 빼 주세요.' : '';
+    var sel = $('adminSel'), keep = sel.value;
+    var opts = Object.keys(S.members).filter(function (id) { return ids.indexOf(id) < 0 && S.members[id] && S.members[id].name && !S.members[id].sample; })
+      .sort(function (a, b) { return nameOf(a).localeCompare(nameOf(b), 'ko'); });
+    sel.innerHTML = opts.length ? opts.map(function (id) { return '<option value="' + esc(id) + '">' + esc(nameOf(id)) + '</option>'; }).join('') : '<option value="">추가할 회원이 없습니다</option>';
+    if (keep && opts.indexOf(keep) >= 0) sel.value = keep;
+    $('adminAdd').disabled = !opts.length;
+  }
+  async function adminOp(op, uid) {
+    var msg = $('adminMsg'); msg.textContent = '';
+    try { await B.adminOp(op, uid); toast(op === 'add' ? '운영진으로 추가했습니다.' : '운영진에서 뺐습니다.'); }
+    catch (e) { msg.textContent = errText(e); }
+    renderAll(); renderAdmins();
   }
 
   // ---------- check panel ----------
@@ -1258,7 +1415,7 @@ if (typeof module !== 'undefined') module.exports = RL;
       if (k !== 'board') p.style.display = (k === t) ? 'flex' : 'none';
     });
     if (t === 'board') { renderBoard(); if (REMOTE) refresh(); }
-    if (t === 'check') { renderInstallRow(); renderMapRow(); }
+    if (t === 'check') { renderInstallRow(); renderMapRow(); renderAdmins(); }
   }
   function renderInstallRow() {
     var done = isStandalone();
@@ -1279,13 +1436,13 @@ if (typeof module !== 'undefined') module.exports = RL;
     else if (S.pending.length) t = '아직 올리지 못한 기록이 ' + S.pending.length + '건 있습니다. 연결되면 자동으로 올립니다.';
     b.hidden = !t; b.textContent = t;
   }
-  function renderAll() { renderBanner(); renderRun(); renderBoard(); }
+  function renderAll() { renderBanner(); renderRun(); renderBoard(); renderAdmins(); }
 
   // ---------- init ----------
   async function init() {
     initCheck(); setTab('run');
     if (REMOTE) {
-      S.members = {}; S.runs = []; S.cheers = {};
+      S.members = {}; S.runs = []; S.cheers = {}; S.msgs = []; S.notice = null; S.admins = [];
       var me = jget(K_ME, null);
       if (me && me.id && me.token) { S.me = me; S.uid = me.id; }
       loadPending();
@@ -1344,6 +1501,16 @@ if (typeof module !== 'undefined') module.exports = RL;
   $('btnDiscard').addEventListener('click', discardRun);
   ['inDist', 'inMin', 'inSec'].forEach(function (id) { $(id).addEventListener('input', updateRevPace); });
   $('p-board').addEventListener('click', async function (e) {
+    var ne = e.target.closest('button[data-notice-edit]');
+    if (ne) { openNoticeEdit(); return; }
+    if (e.target.closest('#msgMore')) { msgAll = !msgAll; renderMsgs(); return; }
+    var md = e.target.closest('button[data-msgdel]');
+    if (md) {
+      if (!md.classList.contains('arm')) { md.classList.add('arm'); md.textContent = '한 번 더 누르면 지웁니다'; setTimeout(function () { if (md.isConnected) { md.classList.remove('arm'); md.textContent = '지우기'; } }, 4000); return; }
+      md.disabled = true;
+      try { await B.deleteMsg(md.getAttribute('data-msgdel')); } catch (err) { toast(errText(err)); }
+      renderMsgs(); return;
+    }
     var mp = e.target.closest('button[data-route]');
     if (mp) { openRoute(mp.getAttribute('data-route')); return; }
     var c = e.target.closest('button[data-cheer]');
@@ -1359,6 +1526,20 @@ if (typeof module !== 'undefined') module.exports = RL;
       try { await B.deleteRun(d.getAttribute('data-del')); toast('기록을 삭제했습니다.'); } catch (err) { toast(errText(err)); }
       renderAll();
     }
+  });
+  $('msgSend').addEventListener('click', sendMsg);
+  $('msgIn').addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); sendMsg(); } });
+  $('neSave').addEventListener('click', function () { saveNotice(false); });
+  $('neClear').addEventListener('click', function () { saveNotice(true); });
+  $('neClose').addEventListener('click', closeNoticeEdit);
+  $('noticeText').addEventListener('input', neCount);
+  $('noticeEdit').addEventListener('click', function (e) { if (e.target === $('noticeEdit')) closeNoticeEdit(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('noticeEdit').hidden) closeNoticeEdit(); });
+  $('adminAdd').addEventListener('click', function () { var v = $('adminSel').value; if (v) adminOp('add', v); });
+  $('adminList').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-admdel]'); if (!b) return;
+    if (!b.classList.contains('arm')) { b.classList.add('arm'); b.textContent = '한 번 더 누르면 뺍니다'; setTimeout(function () { if (b.isConnected) { b.classList.remove('arm'); b.textContent = '빼기'; } }, 4000); return; }
+    adminOp('remove', b.getAttribute('data-admdel'));
   });
   $('c-gps-btn').addEventListener('click', testGps);
   $('c-wake-btn').addEventListener('click', testWake);
