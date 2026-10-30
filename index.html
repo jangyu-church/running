@@ -186,6 +186,10 @@ input[type="password"] { letter-spacing: .35em; }
 .hidechk input { width: 26px; height: 26px; margin-top: 1px; flex: none; }
 .mrow { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; }
 .sheet .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.kdot { width: 20px; height: 20px; border-radius: 50%; background: #E5484D; border: 3px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.28); }
+.kpin { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.kpin b { background: #fff; color: #222; font: 700 14px var(--font-body); padding: 3px 8px; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,.35); white-space: nowrap; }
+.kpin i { display: block; width: 18px; height: 18px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.28); }
 .leaflet-container { font: 14px var(--font-body); }
 .leaflet-tooltip { font-weight: 700; }
 </style>
@@ -235,7 +239,7 @@ input[type="password"] { letter-spacing: .35em; }
         <p class="myweek" id="myWeek"></p>
         <button type="button" id="btnStart" class="btn btn-primary btn-xl">달리기 시작</button>
         <p class="hint">시작하면 위치 사용을 묻는 창이 나올 수 있습니다. 뛰는 동안 화면을 켜 두세요.</p>
-        <label class="hidechk"><input type="checkbox" id="chkHide" checked><span>달린 길을 지도에 남길 때, 집 위치가 드러나지 않도록 <b>시작과 끝 150m</b>는 가립니다. (끄면 출발지부터 도착지까지 모두 보입니다)</span></label>
+        <label class="hidechk"><input type="checkbox" id="chkHide"><span>집 위치가 알려지는 것이 걱정되면 체크하세요. <b>시작과 끝 150m</b>는 지도에서 가립니다. (체크하지 않으면 출발지부터 도착지까지 모두 보입니다)</span></label>
         <div class="links">
           <button type="button" id="btnSim" class="link">가상 위치로 연습</button>
           <button type="button" id="btnManual" class="link">직접 기록 입력</button>
@@ -266,7 +270,7 @@ input[type="password"] { letter-spacing: .35em; }
           <div id="runMap" class="map" aria-label="달리는 길 지도"></div>
           <p id="mapNote" class="hint" hidden></p>
         </div>
-        <div class="mrow"><button type="button" id="btnMapToggle" class="link" hidden>지도 접기</button><button type="button" id="btnFollow" class="link" hidden>내 위치로 돌아가기</button></div>
+        <div class="mrow"><button type="button" id="btnMapToggle" class="link" hidden>지도 접기</button><button type="button" id="btnFollow" class="link" hidden>내 위치로 돌아가기</button><button type="button" id="btnMapAlt" class="link" hidden>지도가 안 보이면 기본 지도로</button></div>
       </div>
 
       <div id="review" class="card" hidden>
@@ -311,6 +315,12 @@ input[type="password"] { letter-spacing: .35em; }
           <button type="button" class="btn btn-ghost sm" id="c-db-btn">시험하기</button>
         </div>
         <div class="trow">
+          <div class="head"><b>지도</b><span class="pill" id="c-map-pill">확인 전</span></div>
+          <p class="hint">달리는 길을 보여 주는 지도입니다.</p>
+          <p class="detail" id="c-map-txt"></p>
+          <button type="button" class="btn btn-ghost sm" id="c-map-btn" hidden>기본 지도로 보기</button>
+        </div>
+        <div class="trow">
           <div class="head"><b>홈 화면에 추가</b><span class="pill" id="c-inst-pill">확인 전</span></div>
           <p class="hint">앱처럼 아이콘을 만들어 두면 편합니다.</p>
           <p class="detail" id="c-inst-txt"></p>
@@ -340,7 +350,8 @@ input[type="password"] { letter-spacing: .35em; }
     <p id="rvInfo" class="hint"></p>
     <div id="rvMap" class="map tall"></div>
     <p id="rvMsg" class="msg" hidden></p>
-    <p class="hint">초록 점은 출발, 빨간 점은 도착입니다. 집 위치 보호를 위해 시작과 끝 구간이 지도에서 빠져 있을 수 있습니다.</p>
+    <button type="button" id="rvAlt" class="link" hidden>지도가 안 보이면 기본 지도로 바꾸기</button>
+    <p class="hint">초록 점은 출발, 빨간 점은 도착입니다. 달린 사람이 집 위치 보호를 선택했다면 시작과 끝 구간이 빠져 있을 수 있습니다.</p>
   </div>
 </div>
 <script src="leaflet.js"></script>
@@ -622,7 +633,7 @@ if (typeof module !== 'undefined') module.exports = RL;
   var TILE_ATTR = '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
   function mapOK() { return typeof window.L !== 'undefined' && window.L && typeof window.L.map === 'function'; }
   function mapOn() { return jget(K_MAPON, true) !== false; }
-  function hideEnds() { return jget(K_HIDEENDS, true) !== false; }
+  function hideEnds() { return jget(K_HIDEENDS, false) === true; }
   function dm(a, b) { return RL.hav({ lat: a[0], lon: a[1] }, { lat: b[0], lon: b[1] }); }
   function encNum(n) { n = n < 0 ? ~(n << 1) : (n << 1); var s = ''; while (n >= 0x20) { s += String.fromCharCode((0x20 | (n & 0x1f)) + 63); n >>= 5; } return s + String.fromCharCode(n + 63); }
   function encPoly(pts) {
@@ -684,56 +695,172 @@ if (typeof module !== 'undefined') module.exports = RL;
     return e.length <= 8500 ? e : '';
   }
 
-  var M = { map: null, line: null, dot: null, follow: true, had: false, lastDraw: 0, last: null };
-  function newMap(id) {
+  // ----- 지도 엔진: 카카오맵(키가 있고 불러와졌을 때), 아니면 기본 지도(OpenStreetMap) -----
+  var K_MAPPREF = 'rl_map_pref';
+  var KK = { st: 'off' };   // off(키 없음) | loading | ready | failed
+  function kakaoKey() { return (window.RL_CONFIG && window.RL_CONFIG.KAKAO_KEY) || ''; }
+  function loadKakao() {
+    var key = kakaoKey(); if (!key) return;
+    KK.st = 'loading';
+    var s = document.createElement('script');
+    s.src = 'https://dapi.kakao.com/v2/maps/sdk.js?appkey=' + encodeURIComponent(key) + '&autoload=false';
+    s.onload = function () {
+      try { window.kakao.maps.load(function () { KK.st = 'ready'; mapRefresh(); }); } catch (e) { KK.st = 'failed'; mapRefresh(); }
+    };
+    s.onerror = function () { KK.st = 'failed'; mapRefresh(); };
+    document.head.appendChild(s);
+    setTimeout(function () { if (KK.st === 'loading') { KK.st = 'failed'; mapRefresh(); } }, 10000);
+  }
+  function engineNow() {
+    if (jget(K_MAPPREF, '') === 'osm') return mapOK() ? 'osm' : null;
+    if (KK.st === 'ready') return 'kakao';
+    if (KK.st === 'loading') return 'wait';
+    return mapOK() ? 'osm' : null;
+  }
+  function mapRefresh() { mapShow(); renderMapRow(); if (RV.openId && !$('routeView').hidden && !RV.map) openRoute(RV.openId); }
+
+  // 기본 지도 (Leaflet + OpenStreetMap)
+  function osmMap(id) {
     var m = L.map(id, { zoomControl: true });
     L.tileLayer(TILE_URL, { maxZoom: 19, attribution: TILE_ATTR }).addTo(m);
     m.setView([36.5, 127.8], 7);
-    return m;
+    var line = L.polyline([], { color: '#0B5CAD', weight: 6, opacity: 0.9 }).addTo(m);
+    var dot = L.circleMarker([0, 0], { radius: 9, color: '#ffffff', weight: 3, fillColor: '#E5484D', fillOpacity: 1 });
+    var pins = L.layerGroup().addTo(m);
+    return {
+      eng: 'osm',
+      resize: function () { m.invalidateSize(); },
+      center: function (p) { m.setView(p, 17); },
+      pan: function (p) { m.panTo(p, { animate: false }); },
+      setLine: function (pts) { line.setLatLngs(pts); },
+      setDot: function (p) { if (!dot._map) dot.addTo(m); dot.setLatLng(p); },
+      onDrag: function (fn) { m.on('dragstart', fn); },
+      route: function (pts) {
+        pins.clearLayers();
+        var l = L.polyline(pts, { color: '#0B5CAD', weight: 6, opacity: 0.9 }).addTo(pins);
+        L.circleMarker(pts[0], { radius: 9, color: '#ffffff', weight: 3, fillColor: '#2E9E5B', fillOpacity: 1 }).bindTooltip('출발', { permanent: true, direction: 'top', offset: [0, -8] }).addTo(pins);
+        L.circleMarker(pts[pts.length - 1], { radius: 9, color: '#ffffff', weight: 3, fillColor: '#E5484D', fillOpacity: 1 }).bindTooltip('도착', { permanent: true, direction: 'top', offset: [0, -8] }).addTo(pins);
+        m.invalidateSize(); m.fitBounds(l.getBounds(), { padding: [34, 34], maxZoom: 18 });
+      },
+      clearRoute: function () { pins.clearLayers(); m.setView([36.5, 127.8], 7); },
+      destroy: function () { try { m.remove(); } catch (e) { } }
+    };
   }
+  // 카카오맵
+  function kakaoMap(id) {
+    var K = window.kakao.maps, el = $(id);
+    function ll(p) { return new K.LatLng(p[0], p[1]); }
+    var m = new K.Map(el, { center: new K.LatLng(36.5, 127.8), level: 13 });
+    m.addControl(new K.ZoomControl(), K.ControlPosition.RIGHT);
+    var line = new K.Polyline({ map: m, path: [], strokeWeight: 6, strokeColor: '#0B5CAD', strokeOpacity: 0.9, strokeStyle: 'solid' });
+    var dot = null, shapes = [];
+    function dotEl() { var d = document.createElement('div'); d.className = 'kdot'; return d; }
+    function pinEl(label, color) {
+      var w = document.createElement('div'); w.className = 'kpin';
+      var b = document.createElement('b'); b.textContent = label;
+      var i = document.createElement('i'); i.style.background = color;
+      w.appendChild(b); w.appendChild(i); return w;
+    }
+    return {
+      eng: 'kakao',
+      resize: function () { m.relayout(); },
+      center: function (p) { m.setLevel(4); m.setCenter(ll(p)); },
+      pan: function (p) { m.setCenter(ll(p)); },
+      setLine: function (pts) { line.setPath(pts.map(ll)); },
+      setDot: function (p) {
+        if (!dot) dot = new K.CustomOverlay({ map: m, position: ll(p), content: dotEl(), xAnchor: 0.5, yAnchor: 0.5, zIndex: 5 });
+        else dot.setPosition(ll(p));
+      },
+      onDrag: function (fn) { K.event.addListener(m, 'dragstart', fn); },
+      route: function (pts) {
+        shapes.forEach(function (s) { s.setMap(null); }); shapes = [];
+        var path = pts.map(ll);
+        shapes.push(new K.Polyline({ map: m, path: path, strokeWeight: 6, strokeColor: '#0B5CAD', strokeOpacity: 0.9, strokeStyle: 'solid' }));
+        shapes.push(new K.CustomOverlay({ map: m, position: path[0], content: pinEl('출발', '#2E9E5B'), xAnchor: 0.5, yAnchor: 0.8, zIndex: 6 }));
+        shapes.push(new K.CustomOverlay({ map: m, position: path[path.length - 1], content: pinEl('도착', '#E5484D'), xAnchor: 0.5, yAnchor: 0.8, zIndex: 7 }));
+        var b = new K.LatLngBounds(); path.forEach(function (q) { b.extend(q); });
+        m.relayout(); m.setBounds(b, 70, 40, 40, 40);
+      },
+      clearRoute: function () { shapes.forEach(function (s) { s.setMap(null); }); shapes = []; },
+      destroy: function () { try { el.innerHTML = ''; } catch (e) { } }
+    };
+  }
+  function makeMap(id) {
+    var e = engineNow();
+    if (e === 'kakao') { try { return kakaoMap(id); } catch (err) { KK.st = 'failed'; return engineNow() === 'osm' ? osmMap(id) : null; } }
+    if (e === 'osm') return osmMap(id);
+    return e;   // 'wait' 또는 null
+  }
+  function useOsm(on) {
+    jset(K_MAPPREF, on ? 'osm' : '');
+    if (M.map) { M.map.destroy(); M.map = null; M.had = false; }
+    if (RV.map) { RV.map.destroy(); RV.map = null; }
+    mapRefresh();
+    toast(on ? '기본 지도로 바꿨습니다.' : '카카오맵으로 바꿨습니다.');
+  }
+  function renderMapRow() {
+    if (!$('c-map-pill')) return;
+    var pref = jget(K_MAPPREF, '') === 'osm', cls, pill, txt;
+    if (pref) { cls = 'warn'; pill = '기본 지도'; txt = '기본 지도(OpenStreetMap)를 쓰도록 선택되어 있습니다.'; }
+    else if (KK.st === 'ready') { cls = 'ok'; pill = '카카오맵'; txt = '카카오맵을 쓰고 있습니다.'; }
+    else if (KK.st === 'loading') { cls = ''; pill = '불러오는 중'; txt = '카카오맵을 불러오는 중입니다.'; }
+    else if (KK.st === 'failed') { cls = 'warn'; pill = '기본 지도'; txt = '카카오맵을 불러오지 못해 기본 지도를 씁니다. (키 또는 사이트 주소 등록을 확인해 주세요)'; }
+    else { cls = 'warn'; pill = '기본 지도'; txt = '카카오 키가 아직 설정되지 않아 기본 지도를 씁니다.'; }
+    setRow('map', cls, pill, txt);
+    C.map = { pill: pill, text: txt };
+    var b = $('c-map-btn'); b.hidden = !(pref || KK.st === 'ready');
+    b.textContent = pref ? '카카오맵으로 보기' : '기본 지도로 보기';
+    summary();
+  }
+
+  var M = { map: null, follow: true, had: false, lastDraw: 0, last: null };
   function mapShow() {
     var box = $('mapBox'); if (!box) return;
-    var tg = $('btnMapToggle'), fb = $('btnFollow'), running = R.phase === 'running', on = mapOn();
+    var tg = $('btnMapToggle'), fb = $('btnFollow'), alt = $('btnMapAlt'), running = R.phase === 'running', on = mapOn();
     tg.hidden = !running; tg.textContent = on ? '지도 접기' : '지도 보기';
     box.hidden = !(running && on);
-    if (!running) { fb.hidden = true; return; }
-    if (!on) return;
+    if (!running) { fb.hidden = true; alt.hidden = true; return; }
+    if (!on) { alt.hidden = true; return; }
     var note = $('mapNote');
-    if (!mapOK()) { $('runMap').hidden = true; note.hidden = false; note.textContent = '지도를 불러오지 못했습니다. 기록은 그대로 이어집니다.'; return; }
-    $('runMap').hidden = false; note.hidden = true;
     if (!M.map) {
-      M.map = newMap('runMap');
-      M.line = L.polyline([], { color: '#0B5CAD', weight: 6, opacity: 0.9 }).addTo(M.map);
-      M.dot = L.circleMarker([0, 0], { radius: 9, color: '#ffffff', weight: 3, fillColor: '#E5484D', fillOpacity: 1 });
-      M.map.on('dragstart', function () { M.follow = false; $('btnFollow').hidden = false; });
+      var mm = makeMap('runMap');
+      if (mm === 'wait') { $('runMap').hidden = true; note.hidden = false; note.textContent = '지도를 불러오는 중입니다…'; return; }
+      if (!mm) { $('runMap').hidden = true; note.hidden = false; note.textContent = '지도를 불러오지 못했습니다. 기록은 그대로 이어집니다.'; return; }
+      M.map = mm; M.had = false;
+      mm.onDrag(function () { M.follow = false; $('btnFollow').hidden = false; });
     }
-    setTimeout(function () { if (M.map) M.map.invalidateSize(); }, 60);
-    if (R.pts && R.pts.length) M.line.setLatLngs(R.pts);
-    if (M.last && !M.had) { M.map.setView(M.last, 17); M.had = true; if (!M.dot._map) M.dot.addTo(M.map); M.dot.setLatLng(M.last); }
+    $('runMap').hidden = false; note.hidden = true;
+    alt.hidden = M.map.eng !== 'kakao';
+    setTimeout(function () { if (M.map) M.map.resize(); }, 60);
+    if (R.pts && R.pts.length) M.map.setLine(R.pts);
+    if (M.last && !M.had) { M.map.center(M.last); M.had = true; M.map.setDot(M.last); }
   }
   function mapUpdate(p) {
     M.last = [p.lat, p.lon];
     if (!M.map || R.phase !== 'running' || !mapOn() || $('mapBox').hidden) return;
     var t = now(); if (t - M.lastDraw < 1000) return; M.lastDraw = t;
-    M.line.setLatLngs(R.pts);
-    if (!M.dot._map) M.dot.addTo(M.map);
-    M.dot.setLatLng(M.last);
-    if (M.follow) { if (!M.had) { M.map.setView(M.last, 17); M.had = true; } else M.map.panTo(M.last, { animate: false }); }
+    M.map.setLine(R.pts); M.map.setDot(M.last);
+    if (M.follow) { if (!M.had) { M.map.center(M.last); M.had = true; } else M.map.pan(M.last); }
   }
 
-  var RV = { map: null, group: null, cache: {}, seq: 0 };
-  function closeRoute() { $('routeView').hidden = true; RV.seq++; }
+  var RV = { map: null, cache: {}, seq: 0, openId: null };
+  function closeRoute() { $('routeView').hidden = true; RV.seq++; RV.openId = null; }
   async function openRoute(runId) {
     var r = allRuns().filter(function (x) { return x.id === runId; })[0] || {};
-    var seq = ++RV.seq, msg = $('rvMsg');
+    var seq = ++RV.seq, msg = $('rvMsg'); RV.openId = runId;
     $('rvTitle').textContent = nameOf(r.uid) + '님이 달린 길';
     $('rvInfo').textContent = (r.km ? Number(r.km).toFixed(2) + 'km' : '') + (r.at ? ' · ' + RL.dateLabel(r.at) : '');
     msg.hidden = true; msg.textContent = '';
     $('routeView').hidden = false;
-    if (!mapOK()) { msg.hidden = false; msg.textContent = '지도를 불러오지 못했습니다. 인터넷 연결을 확인하고 앱을 다시 열어 주세요.'; return; }
-    if (!RV.map) { RV.map = newMap('rvMap'); RV.group = L.layerGroup().addTo(RV.map); }
-    RV.group.clearLayers(); RV.map.setView([36.5, 127.8], 7);
-    setTimeout(function () { if (RV.map) RV.map.invalidateSize(); }, 50);
+    if (!RV.map) {
+      var mm = makeMap('rvMap');
+      if (mm === 'wait') { msg.hidden = false; msg.textContent = '지도를 불러오는 중입니다…'; return; }
+      if (!mm) { msg.hidden = false; msg.textContent = '지도를 불러오지 못했습니다. 인터넷 연결을 확인하고 앱을 다시 열어 주세요.'; return; }
+      RV.map = mm;
+    }
+    $('rvAlt').hidden = RV.map.eng !== 'kakao';
+    RV.map.clearRoute();
+    setTimeout(function () { if (RV.map) RV.map.resize(); }, 50);
     var enc = RV.cache[runId] || r.route || '';
     if (!enc) {
       msg.hidden = false; msg.textContent = '길을 불러오는 중…';
@@ -744,11 +871,10 @@ if (typeof module !== 'undefined') module.exports = RL;
     var pts = decPoly(enc);
     if (pts.length < 2) { msg.hidden = false; msg.textContent = '이 기록에는 지도에 표시할 길이 없습니다.'; return; }
     msg.hidden = true;
-    var line = L.polyline(pts, { color: '#0B5CAD', weight: 6, opacity: 0.9 }).addTo(RV.group);
-    L.circleMarker(pts[0], { radius: 9, color: '#ffffff', weight: 3, fillColor: '#2E9E5B', fillOpacity: 1 }).bindTooltip('출발', { permanent: true, direction: 'top', offset: [0, -8] }).addTo(RV.group);
-    L.circleMarker(pts[pts.length - 1], { radius: 9, color: '#ffffff', weight: 3, fillColor: '#E5484D', fillOpacity: 1 }).bindTooltip('도착', { permanent: true, direction: 'top', offset: [0, -8] }).addTo(RV.group);
-    setTimeout(function () { if (!RV.map) return; RV.map.invalidateSize(); RV.map.fitBounds(line.getBounds(), { padding: [34, 34], maxZoom: 18 }); }, 90);
+    setTimeout(function () { if (RV.map && seq === RV.seq) RV.map.route(pts); }, 90);
   }
+
+  loadKakao();
 
   // ---------- run engine ----------
   var rnd = function () { return Math.random() + Math.random() - 1; };
@@ -784,7 +910,7 @@ if (typeof module !== 'undefined') module.exports = RL;
   }
   function startRun(sim) {
     if (R.phase !== 'idle') return;
-    R.phase = 'running'; R.start = now(); R.pausedTotal = 0; R.endAt = 0; R.track = RL.newTrack(); R.sim = !!sim; R.manual = false; R.pts = []; M.follow = true; M.had = false; M.last = null; if (M.line) M.line.setLatLngs([]); $('btnFollow').hidden = true;
+    R.phase = 'running'; R.start = now(); R.pausedTotal = 0; R.endAt = 0; R.track = RL.newTrack(); R.sim = !!sim; R.manual = false; R.pts = []; M.follow = true; M.had = false; M.last = null; if (M.map) M.map.setLine([]); $('btnFollow').hidden = true;
     R.gps = { state: 'wait', acc: null, last: 0 }; R.gaps = 0; R.gapSec = 0; R.hiddenAt = 0; R.lastLive = 0; R.lastLiveKm = -1; R.wakeState = 'wait';
     lockScreen(); beginSignal();
     R.tick = setInterval(tickUI, 500);
@@ -1069,6 +1195,7 @@ if (typeof module !== 'undefined') module.exports = RL;
     L.push('위치(GPS): ' + (C.gps ? C.gps.pill + ' - ' + C.gps.text : '시험 안 함'));
     L.push('화면 켜짐 유지: ' + (C.wake ? C.wake.pill + ' - ' + C.wake.text : '시험 안 함'));
     L.push('기록 서버: ' + (C.db ? C.db.pill + ' - ' + C.db.text : '시험 안 함'));
+    L.push('지도: ' + (C.map ? C.map.pill + ' - ' + C.map.text : '확인 전'));
     L.push('기기: ' + (C.dev || ''));
     $('c-sum').value = L.join('\n');
   }
@@ -1131,7 +1258,7 @@ if (typeof module !== 'undefined') module.exports = RL;
       if (k !== 'board') p.style.display = (k === t) ? 'flex' : 'none';
     });
     if (t === 'board') { renderBoard(); if (REMOTE) refresh(); }
-    if (t === 'check') renderInstallRow();
+    if (t === 'check') { renderInstallRow(); renderMapRow(); }
   }
   function renderInstallRow() {
     var done = isStandalone();
@@ -1182,6 +1309,9 @@ if (typeof module !== 'undefined') module.exports = RL;
   $('btnMapToggle').addEventListener('click', function () { jset(K_MAPON, !mapOn()); mapShow(); });
   $('btnFollow').addEventListener('click', function () { M.follow = true; $('btnFollow').hidden = true; if (M.map && M.last) M.map.panTo(M.last, { animate: false }); });
   $('rvClose').addEventListener('click', closeRoute);
+  $('btnMapAlt').addEventListener('click', function () { useOsm(true); });
+  $('rvAlt').addEventListener('click', function () { useOsm(true); });
+  $('c-map-btn').addEventListener('click', function () { useOsm(jget(K_MAPPREF, '') !== 'osm'); });
   $('routeView').addEventListener('click', function (e) { if (e.target === $('routeView')) closeRoute(); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('routeView').hidden) closeRoute(); });
   $('btnSim').addEventListener('click', function () { startRun(true); });
