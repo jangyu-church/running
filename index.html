@@ -407,6 +407,7 @@ input[type="password"] { letter-spacing: .35em; }
     <p id="rvInfo" class="hint"></p>
     <div id="rvMap" class="map tall"></div>
     <p id="rvMsg" class="msg" hidden></p>
+    <p id="rvNote" class="hint" hidden></p>
     <button type="button" id="rvAlt" class="link" hidden>지도가 안 보이면 기본 지도로 바꾸기</button>
     <p class="hint">초록 점은 출발, 빨간 점은 도착입니다. 달린 사람이 집 위치 보호를 선택했다면 시작과 끝 구간이 빠져 있을 수 있습니다.</p>
   </div>
@@ -551,7 +552,7 @@ if (typeof module !== 'undefined') module.exports = RL;
   // ---------- state ----------
   var sd = RL.sampleData(now());
   var S = { ready: false, uid: null, me: null, members: sd.members, runs: sd.runs, cheers: sd.cheers, live: {}, tab: 'run', editName: false, skew: 0, netErr: false, authErr: '', pending: [], regMode: 'new', lastOk: 0, admins: [], notice: null, msgs: [] };
-  var R = { pts: [], phase: 'idle', start: 0, pausedTotal: 0, endAt: 0, track: RL.newTrack(), sim: false, manual: false, watch: null, simTimer: null, tick: null, wake: null, wakeState: 'wait',
+  var R = { pts: [], gapAt: [], finishing: false, phase: 'idle', start: 0, pausedTotal: 0, endAt: 0, track: RL.newTrack(), sim: false, manual: false, watch: null, simTimer: null, tick: null, wake: null, wakeState: 'wait',
     gps: { state: 'wait', acc: null, last: 0 }, gaps: 0, gapSec: 0, hiddenAt: 0, lastLive: 0, lastLiveKm: -1, gpsKm: 0, saving: false, discardArm: 0, simPos: null, simSeq: 0 };
   var C = { gps: null, wake: null, db: null, dev: null };
 
@@ -723,6 +724,7 @@ if (typeof module !== 'undefined') module.exports = RL;
 
   // ---------- 지도 (달린 길) ----------
   var K_MAPON = 'rl_map_on', K_HIDEENDS = 'rl_hide_ends';
+  var GAP_COLOR = '#E67E22';
   var TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
   var TILE_ATTR = '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
   function mapOK() { return typeof window.L !== 'undefined' && window.L && typeof window.L.map === 'function'; }
@@ -771,6 +773,27 @@ if (typeof module !== 'undefined') module.exports = RL;
     }
     return pts.filter(function (_, j) { return keep[j]; });
   }
+  // 점선 구간 표시: 저장할 때는 '같은 점을 연달아 두 번' 찍어 구간 경계를 표시함 (서버·옛 화면과 호환)
+  function toSegs(pts, gapIdx) {
+    var set = {}; (gapIdx || []).forEach(function (i) { set[i] = 1; });
+    var segs = [], cur = [];
+    for (var i = 0; i < pts.length; i++) {
+      if (set[i] && cur.length) { segs.push({ pts: cur, dash: false }); segs.push({ pts: [cur[cur.length - 1], pts[i]], dash: true }); cur = [pts[i]]; }
+      else cur.push(pts[i]);
+    }
+    if (cur.length) segs.push({ pts: cur, dash: false });
+    return segs;
+  }
+  function decRoute(enc) {
+    var raw = decPoly(enc), pts = [], gi = [], mark = false;
+    raw.forEach(function (p) {
+      var q = pts[pts.length - 1];
+      if (q && p[0] === q[0] && p[1] === q[1]) { mark = true; return; }
+      if (mark && q && dm(q, p) >= 30) gi.push(pts.length);
+      mark = false; pts.push(p);
+    });
+    return { pts: pts, gi: gi };
+  }
   // 시작·끝 구간을 지도에서 가림 (집 위치 보호)
   function trimEnds(pts, m) {
     if (pts.length < 2) return pts;
@@ -778,12 +801,36 @@ if (typeof module !== 'undefined') module.exports = RL;
     var total = cum[cum.length - 1]; m = Math.min(m, total * 0.15);
     return pts.filter(function (_, j) { return cum[j] >= m && cum[j] <= total - m; });
   }
+  function trimEnds2(tp, m) {   // trimEnds와 같지만 '점선 시작' 표시(3번째 값)를 잃지 않음
+    if (tp.length < 2) return tp;
+    var cum = [0]; for (var i = 1; i < tp.length; i++) cum.push(cum[i - 1] + dm(tp[i - 1], tp[i]));
+    var total = cum[cum.length - 1]; m = Math.min(m, total * 0.15);
+    var out = [], carry = 0;
+    tp.forEach(function (p, j) {
+      if (cum[j] >= m && cum[j] <= total - m) { out.push([p[0], p[1], (p[2] || carry) ? 1 : 0]); carry = 0; }
+      else if (p[2]) carry = 1;
+    });
+    return out;
+  }
+  function simSegs(tp, tol) {
+    var segs = [], cur = [];
+    tp.forEach(function (p) { if (p[2] && cur.length) { segs.push(cur); cur = []; } cur.push(p); });
+    if (cur.length) segs.push(cur);
+    var out = [];
+    segs.forEach(function (sg, k) {
+      if (k > 0 && out.length) out.push(out[out.length - 1]);
+      simplify(sg, tol).forEach(function (p) { out.push(p); });
+    });
+    return out;
+  }
   function buildRoute() {
     var pts = R.pts || [];
     if (pts.length < 2) return '';
-    if (hideEnds()) pts = trimEnds(pts, 150);
-    var tol = 4, s = simplify(pts, tol);
-    while (s.length > 450 && tol < 80) { tol *= 1.6; s = simplify(pts, tol); }
+    var gs = {}; (R.gapAt || []).forEach(function (i) { gs[i] = 1; });
+    var tp = pts.map(function (p, i) { return [p[0], p[1], gs[i] ? 1 : 0]; });
+    if (hideEnds()) tp = trimEnds2(tp, 150);
+    var tol = 4, s = simSegs(tp, tol);
+    while (s.length > 450 && tol < 80) { tol *= 1.6; s = simSegs(tp, tol); }
     if (s.length < 2) return '';
     var e = encPoly(s);
     return e.length <= 8500 ? e : '';
@@ -821,20 +868,27 @@ if (typeof module !== 'undefined') module.exports = RL;
     var line = L.polyline([], { color: '#0B5CAD', weight: 6, opacity: 0.9 }).addTo(m);
     var dot = L.circleMarker([0, 0], { radius: 9, color: '#ffffff', weight: 3, fillColor: '#E5484D', fillOpacity: 1 });
     var pins = L.layerGroup().addTo(m);
+    var gl = L.layerGroup().addTo(m);
+    var SOLID = { color: '#0B5CAD', weight: 6, opacity: 0.9 }, DASH = { color: GAP_COLOR, weight: 5, opacity: 0.95, dashArray: '2 10', lineCap: 'round' };
     return {
       eng: 'osm',
       resize: function () { m.invalidateSize(); },
       center: function (p) { m.setView(p, 17); },
       pan: function (p) { m.panTo(p, { animate: false }); },
-      setLine: function (pts) { line.setLatLngs(pts); },
+      setLine: function (pts, gi) {
+        gl.clearLayers();
+        if (!gi || !gi.length) { line.setLatLngs(pts); return; }
+        line.setLatLngs([]);
+        toSegs(pts, gi).forEach(function (sg) { if (sg.pts.length >= 2) L.polyline(sg.pts, sg.dash ? DASH : SOLID).addTo(gl); });
+      },
       setDot: function (p) { if (!dot._map) dot.addTo(m); dot.setLatLng(p); },
       onDrag: function (fn) { m.on('dragstart', fn); },
-      route: function (pts) {
+      route: function (pts, gi) {
         pins.clearLayers();
-        var l = L.polyline(pts, { color: '#0B5CAD', weight: 6, opacity: 0.9 }).addTo(pins);
+        toSegs(pts, gi || []).forEach(function (sg) { if (sg.pts.length >= 2) L.polyline(sg.pts, sg.dash ? DASH : SOLID).addTo(pins); });
         L.circleMarker(pts[0], { radius: 9, color: '#ffffff', weight: 3, fillColor: '#2E9E5B', fillOpacity: 1 }).bindTooltip('출발', { permanent: true, direction: 'top', offset: [0, -8] }).addTo(pins);
         L.circleMarker(pts[pts.length - 1], { radius: 9, color: '#ffffff', weight: 3, fillColor: '#E5484D', fillOpacity: 1 }).bindTooltip('도착', { permanent: true, direction: 'top', offset: [0, -8] }).addTo(pins);
-        m.invalidateSize(); m.fitBounds(l.getBounds(), { padding: [34, 34], maxZoom: 18 });
+        m.invalidateSize(); m.fitBounds(L.latLngBounds(pts), { padding: [34, 34], maxZoom: 18 });
       },
       clearRoute: function () { pins.clearLayers(); m.setView([36.5, 127.8], 7); },
       destroy: function () { try { m.remove(); } catch (e) { } }
@@ -847,7 +901,9 @@ if (typeof module !== 'undefined') module.exports = RL;
     var m = new K.Map(el, { center: new K.LatLng(36.5, 127.8), level: 13 });
     m.addControl(new K.ZoomControl(), K.ControlPosition.RIGHT);
     var line = new K.Polyline({ map: m, path: [], strokeWeight: 6, strokeColor: '#0B5CAD', strokeOpacity: 0.9, strokeStyle: 'solid' });
-    var dot = null, shapes = [];
+    var dot = null, shapes = [], gshapes = [];
+    function kstyle(dash) { return { strokeWeight: dash ? 5 : 6, strokeColor: dash ? GAP_COLOR : '#0B5CAD', strokeOpacity: dash ? 0.95 : 0.9, strokeStyle: dash ? 'shortdash' : 'solid' }; }
+    function kpoly(sg) { var o = kstyle(sg.dash); o.map = m; o.path = sg.pts.map(ll); return new K.Polyline(o); }
     function dotEl() { var d = document.createElement('div'); d.className = 'kdot'; return d; }
     function pinEl(label, color) {
       var w = document.createElement('div'); w.className = 'kpin';
@@ -860,16 +916,21 @@ if (typeof module !== 'undefined') module.exports = RL;
       resize: function () { m.relayout(); },
       center: function (p) { m.setLevel(4); m.setCenter(ll(p)); },
       pan: function (p) { m.setCenter(ll(p)); },
-      setLine: function (pts) { line.setPath(pts.map(ll)); },
+      setLine: function (pts, gi) {
+        gshapes.forEach(function (x) { x.setMap(null); }); gshapes = [];
+        if (!gi || !gi.length) { line.setPath(pts.map(ll)); return; }
+        line.setPath([]);
+        toSegs(pts, gi).forEach(function (sg) { if (sg.pts.length >= 2) gshapes.push(kpoly(sg)); });
+      },
       setDot: function (p) {
         if (!dot) dot = new K.CustomOverlay({ map: m, position: ll(p), content: dotEl(), xAnchor: 0.5, yAnchor: 0.5, zIndex: 5 });
         else dot.setPosition(ll(p));
       },
       onDrag: function (fn) { K.event.addListener(m, 'dragstart', fn); },
-      route: function (pts) {
+      route: function (pts, gi) {
         shapes.forEach(function (s) { s.setMap(null); }); shapes = [];
         var path = pts.map(ll);
-        shapes.push(new K.Polyline({ map: m, path: path, strokeWeight: 6, strokeColor: '#0B5CAD', strokeOpacity: 0.9, strokeStyle: 'solid' }));
+        toSegs(pts, gi || []).forEach(function (sg) { if (sg.pts.length >= 2) shapes.push(kpoly(sg)); });
         shapes.push(new K.CustomOverlay({ map: m, position: path[0], content: pinEl('출발', '#2E9E5B'), xAnchor: 0.5, yAnchor: 0.8, zIndex: 6 }));
         shapes.push(new K.CustomOverlay({ map: m, position: path[path.length - 1], content: pinEl('도착', '#E5484D'), xAnchor: 0.5, yAnchor: 0.8, zIndex: 7 }));
         var b = new K.LatLngBounds(); path.forEach(function (q) { b.extend(q); });
@@ -926,14 +987,14 @@ if (typeof module !== 'undefined') module.exports = RL;
     $('runMap').hidden = false; note.hidden = true;
     alt.hidden = M.map.eng !== 'kakao';
     setTimeout(function () { if (M.map) M.map.resize(); }, 60);
-    if (R.pts && R.pts.length) M.map.setLine(R.pts);
+    if (R.pts && R.pts.length) M.map.setLine(R.pts, R.gapAt);
     if (M.last && !M.had) { M.map.center(M.last); M.had = true; M.map.setDot(M.last); }
   }
   function mapUpdate(p) {
     M.last = [p.lat, p.lon];
     if (!M.map || R.phase !== 'running' || !mapOn() || $('mapBox').hidden) return;
     var t = now(); if (t - M.lastDraw < 1000) return; M.lastDraw = t;
-    M.map.setLine(R.pts); M.map.setDot(M.last);
+    M.map.setLine(R.pts, R.gapAt); M.map.setDot(M.last);
     if (M.follow) { if (!M.had) { M.map.center(M.last); M.had = true; } else M.map.pan(M.last); }
   }
 
@@ -944,7 +1005,7 @@ if (typeof module !== 'undefined') module.exports = RL;
     var seq = ++RV.seq, msg = $('rvMsg'); RV.openId = runId;
     $('rvTitle').textContent = nameOf(r.uid) + '님이 달린 길';
     $('rvInfo').textContent = (r.km ? Number(r.km).toFixed(2) + 'km' : '') + (r.at ? ' · ' + RL.dateLabel(r.at) : '');
-    msg.hidden = true; msg.textContent = '';
+    msg.hidden = true; msg.textContent = ''; $('rvNote').hidden = true;
     $('routeView').hidden = false;
     if (!RV.map) {
       var mm = makeMap('rvMap');
@@ -962,10 +1023,12 @@ if (typeof module !== 'undefined') module.exports = RL;
       if (enc) RV.cache[runId] = enc;
     }
     if (seq !== RV.seq) return;
-    var pts = decPoly(enc);
+    var dr = decRoute(enc), pts = dr.pts;
     if (pts.length < 2) { msg.hidden = false; msg.textContent = '이 기록에는 지도에 표시할 길이 없습니다.'; return; }
     msg.hidden = true;
-    setTimeout(function () { if (RV.map && seq === RV.seq) RV.map.route(pts); }, 90);
+    var gl2 = 0; dr.gi.forEach(function (i) { gl2 += dm(pts[i - 1], pts[i]); });
+    if (gl2 >= 30) { var nt = $('rvNote'); nt.hidden = false; nt.textContent = '주황색 점선은 화면이 꺼져 위치를 알 수 없던 구간입니다. 두 점을 직선으로 이으면 약 ' + Math.round(gl2) + 'm입니다. 이 구간은 직선거리와 직전 속도로 간 거리 중 큰 쪽을 거리에 더했습니다.'; }
+    setTimeout(function () { if (RV.map && seq === RV.seq) RV.map.route(pts, dr.gi); }, 90);
   }
 
   loadKakao();
@@ -976,6 +1039,7 @@ if (typeof module !== 'undefined') module.exports = RL;
     if (R.phase !== 'running') return;
     R.gps.acc = p.acc; R.gps.last = now(); R.gps.state = p.acc <= 15 ? 'good' : 'weak';
     var st = RL.step(R.track, p);
+    if (st === 'gap') R.gapAt.push(R.pts.length);   // 이 점 바로 앞 구간이 '화면이 꺼져 있던 구간'
     if (st === 'ok' || st === 'first' || st === 'reanchor' || st === 'gap') R.pts.push([p.lat, p.lon]);
     if (st !== 'acc') mapUpdate(p);
   }
@@ -1004,7 +1068,7 @@ if (typeof module !== 'undefined') module.exports = RL;
   }
   function startRun(sim) {
     if (R.phase !== 'idle') return;
-    R.phase = 'running'; R.start = now(); R.pausedTotal = 0; R.endAt = 0; R.track = RL.newTrack(); R.sim = !!sim; R.manual = false; R.pts = []; M.follow = true; M.had = false; M.last = null; if (M.map) M.map.setLine([]); $('btnFollow').hidden = true;
+    R.phase = 'running'; R.start = now(); R.pausedTotal = 0; R.endAt = 0; R.track = RL.newTrack(); R.sim = !!sim; R.manual = false; R.pts = []; R.gapAt = []; R.finishing = false; M.follow = true; M.had = false; M.last = null; if (M.map) M.map.setLine([]); $('btnFollow').hidden = true;
     R.gps = { state: 'wait', acc: null, last: 0 }; R.gaps = 0; R.gapSec = 0; R.hiddenAt = 0; R.lastLive = 0; R.lastLiveKm = -1; R.wakeState = 'wait';
     lockScreen(); beginSignal();
     R.tick = setInterval(tickUI, 500);
@@ -1033,7 +1097,7 @@ if (typeof module !== 'undefined') module.exports = RL;
     var src;
     if (R.sim) src = '연습 모드로 만든 가상 기록입니다.';
     else if (R.track.total < 50 && (R.gps.state === 'denied' || R.gps.state === 'unsupported' || R.gps.state === 'nogps')) src = '위치를 읽지 못해 거리를 재지 못했습니다. 거리를 직접 입력해 주세요.';
-    else src = 'GPS로 잰 거리입니다.' + (R.track.est >= 20 ? ' 화면이 꺼져 있던 구간 약 ' + Math.round(R.track.est) + 'm는 직전 속도로 달렸다고 보고 더한 추정값입니다.' : '') + ' 맞지 않으면 고쳐 주세요.';
+    else src = 'GPS로 잰 거리입니다.' + (R.track.gaps > 0 ? ' 화면이 꺼져 있던 구간은 지도에 주황색 점선으로 보입니다.' : '') + (R.track.est >= 20 ? ' 화면이 꺼져 있던 구간 약 ' + Math.round(R.track.est) + 'm는 직전 속도로 달렸다고 보고 더한 추정값입니다.' : '') + ' 맞지 않으면 고쳐 주세요.';
     $('revSrc').textContent = src;
     $('revTitle').textContent = '기록 확인';
     $('btnResume').hidden = false;
@@ -1041,8 +1105,30 @@ if (typeof module !== 'undefined') module.exports = RL;
     updateRevPace();
   }
   function finishRun() {
+    if (R.phase !== 'running' || R.finishing) return;
+    var press = now(), seen = R.track.seen || 0;
+    // 화면이 꺼져 있다가 켠 직후에 종료를 누르면 마지막 구간의 위치를 아직 못 받았을 수 있음 → 지금 위치를 한 번 더 받아 계산에 넣음
+    if (!R.sim && R.watch != null && seen && press - seen > 8000) {
+      R.finishing = true;
+      var b = $('btnEnd'); b.disabled = true; b.textContent = '현재 위치를 확인하는 중…';
+      try {
+        navigator.geolocation.getCurrentPosition(
+          function (pos) { onPos({ lat: pos.coords.latitude, lon: pos.coords.longitude, acc: pos.coords.accuracy, t: pos.timestamp || now() }); },
+          function () { }, { enableHighAccuracy: true, maximumAge: 0, timeout: 6000 });
+      } catch (e) { }
+      var t0 = now();
+      var iv = setInterval(function () {
+        if (R.track.seen !== seen || now() - t0 > 6500 || R.phase !== 'running') {
+          clearInterval(iv); R.finishing = false; b.disabled = false; b.textContent = '종료'; doFinish(press);
+        }
+      }, 150);
+      return;
+    }
+    doFinish(press);
+  }
+  function doFinish(press) {
     if (R.phase !== 'running') return;
-    R.phase = 'review'; R.endAt = now();
+    R.phase = 'review'; R.endAt = press;
     stopSignal(); unlockScreen(); clearInterval(R.tick);
     queue(function () { return B.liveClear(); });
     fillReview(); renderRun();
@@ -1063,7 +1149,7 @@ if (typeof module !== 'undefined') module.exports = RL;
     var b = $('btnEnd');
     if (!endArm || now() - endArm > 4000) {
       endArm = now(); b.textContent = '한 번 더 누르면 종료하고 저장합니다';
-      setTimeout(function () { endArm = 0; if (R.phase === 'running') b.textContent = '종료'; }, 4000);
+      setTimeout(function () { endArm = 0; if (R.phase === 'running' && !R.finishing) b.textContent = '종료'; }, 4000);
       return;
     }
     endArm = 0; b.textContent = '종료'; finishRun();
@@ -1079,7 +1165,7 @@ if (typeof module !== 'undefined') module.exports = RL;
   }
   function openManual() {
     if (R.phase !== 'idle') return;
-    R.phase = 'review'; R.manual = true; R.sim = false; R.track = RL.newTrack(); R.gpsKm = 0; R.pts = [];
+    R.phase = 'review'; R.manual = true; R.sim = false; R.track = RL.newTrack(); R.gpsKm = 0; R.pts = []; R.gapAt = [];
     $('revTitle').textContent = '직접 기록 입력';
     $('revSrc').textContent = '달리기를 마친 뒤 거리와 시간을 적어 주세요. 러닝 시계 기록을 옮겨 적어도 됩니다.';
     $('inDist').value = ''; $('inMin').value = ''; $('inSec').value = '0';
