@@ -17,7 +17,8 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet"></noscript>
 <style>
 html { color-scheme: light; }
 body { margin: 0; }
@@ -541,7 +542,7 @@ if (typeof module !== 'undefined') module.exports = RL;
   var REMOTE = !!API;
   var LIVE_STALE = 4 * 60e3;
   var POLL_MS = 20000;
-  var K_ME = 'rl_me', K_PEND = 'rl_pending', K_LOCAL = 'rl_v1', K_INST = 'rl_install_closed';
+  var K_ME = 'rl_me', K_PEND = 'rl_pending', K_LOCAL = 'rl_v1', K_INST = 'rl_install_closed', K_CACHE = 'rl_state_v1';
 
   // ---------- storage ----------
   function jget(k, d) { try { var v = JSON.parse(localStorage.getItem(k) || 'null'); return v == null ? d : v; } catch (e) { return d; } }
@@ -664,6 +665,21 @@ if (typeof module !== 'undefined') module.exports = RL;
   // ---------- pending uploads (전파가 약할 때 폰에 보관) ----------
   function loadPending() { S.pending = jget(K_PEND, []).filter(function (p) { return p && p.rid; }); }
   function savePending() { jset(K_PEND, S.pending); }
+
+  // ---------- 마지막 현황판 보관 (시작할 때 서버를 기다리지 않고 바로 보여 주기 위함) ----------
+  function saveCache() {
+    if (!REMOTE || !S.lastOk || S.netErr) return;
+    jset(K_CACHE, { v: 1, api: API, at: now(), skew: S.skew, members: S.members, runs: S.runs, cheers: S.cheers, admins: S.admins, notice: S.notice, msgs: S.msgs });
+  }
+  function loadCache() {
+    var c = jget(K_CACHE, null);
+    if (!c || c.v !== 1 || c.api !== API || !c.members || typeof c.members !== 'object' || !Array.isArray(c.runs)) return false;
+    if (!Object.keys(c.members).length) return false;
+    S.members = c.members; S.runs = c.runs; S.cheers = c.cheers || {};
+    S.admins = Array.isArray(c.admins) ? c.admins : []; S.notice = c.notice || null; S.msgs = Array.isArray(c.msgs) ? c.msgs : [];
+    S.live = {}; S.skew = isFinite(c.skew) ? c.skew : 0; S.cacheAt = c.at || 0;
+    return true;
+  }
   var flushing = false;
   async function flushPending() {
     if (!REMOTE || flushing || !S.pending.length || !S.me) return;
@@ -683,7 +699,12 @@ if (typeof module !== 'undefined') module.exports = RL;
   var refreshing = false;
   async function refresh() {
     if (refreshing) return; refreshing = true;
-    try { await B.refresh(); await flushPending(); }
+    try {
+      var had = S.pending.length;
+      await B.refresh(); await flushPending();
+      if (REMOTE && had && !S.pending.length) await B.refresh();   // 방금 올린 기록까지 반영
+      saveCache();
+    }
     catch (e) { if (e && e.error === 'net') S.netErr = true; else if (REMOTE) S.netErr = true; }
     refreshing = false; renderAll();
   }
@@ -1433,6 +1454,7 @@ if (typeof module !== 'undefined') module.exports = RL;
     if (!REMOTE) t = '서버 주소가 아직 설정되지 않아 기록이 이 폰에만 저장됩니다. 다른 회원에게는 보이지 않으며, ‘예시’ 표시가 붙은 항목은 화면 확인용입니다.';
     else if (S.authErr) t = S.authErr;
     else if (S.netErr && S.ready) t = '서버와 연결되지 않았습니다. ' + (S.pending.length ? '아직 올리지 못한 기록이 ' + S.pending.length + '건 있습니다. 연결되면 자동으로 올립니다.' : '마지막으로 불러온 내용을 보여 드리고 있어요.');
+    else if (REMOTE && !S.lastOk && S.cacheAt && now() - S.cacheAt > 600000) t = '마지막으로 본 내용을 먼저 보여 드리고 있어요. 최신 내용을 불러오는 중입니다…';
     else if (S.pending.length) t = '아직 올리지 못한 기록이 ' + S.pending.length + '건 있습니다. 연결되면 자동으로 올립니다.';
     b.hidden = !t; b.textContent = t;
   }
@@ -1446,6 +1468,10 @@ if (typeof module !== 'undefined') module.exports = RL;
       var me = jget(K_ME, null);
       if (me && me.id && me.token) { S.me = me; S.uid = me.id; }
       loadPending();
+      if (loadCache()) {   // 지난번에 본 현황판을 먼저 보여 주고, 뒤에서 새로 불러옴
+        S.ready = true;
+        if (S.me && !S.members[S.me.id]) S.members[S.me.id] = { name: S.me.name || '', joined: now() };
+      }
       renderAll();
       await refresh();
       if (!S.ready) { /* 처음부터 연결이 안 되는 경우 */ S.ready = true; S.netErr = true; renderAll(); }

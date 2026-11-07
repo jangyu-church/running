@@ -1,5 +1,5 @@
 // 앱 화면 파일을 폰에 보관해 두는 서비스 워커 (서버 요청은 건드리지 않음)
-const CACHE = 'rl-shell-v7';
+const CACHE = 'rl-shell-v8';
 const SHELL = ['./', 'index.html', 'config.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'leaflet.js', 'leaflet.css'];
 
 self.addEventListener('install', e => {
@@ -17,10 +17,14 @@ self.addEventListener('fetch', e => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
-  e.respondWith(
-    fetch(req).then(res => {
+  e.respondWith((async () => {
+    const cached = await caches.match(req);
+    const net = fetch(req).then(res => {
       if (res && res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); }
       return res;
-    }).catch(() => caches.match(req).then(r => r || caches.match('index.html')))
-  );
+    });
+    if (!cached) return net.catch(() => caches.match('index.html'));
+    // 인터넷이 느리면 1.5초 뒤에 보관해 둔 파일로 먼저 열고, 새 파일은 뒤에서 받아 둠
+    return Promise.race([net.catch(() => cached), new Promise(r => setTimeout(() => r(cached), 1500))]);
+  })());
 });
