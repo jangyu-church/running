@@ -242,6 +242,29 @@ h1 { letter-spacing: -.01em; }
 .rk .no { color: var(--accent-text); }
 .rk:first-child .no { color: var(--pop); }
 .btn-xl { border-radius: 22px; }
+
+/* ===== 그림길 ===== */
+.tabs { grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.tabs button { font-size: 17px; }
+.artgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.artcard { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; box-shadow: var(--shadow); overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
+.artshape { display: block; width: 100%; aspect-ratio: 1; padding: 0; border: 0; background: linear-gradient(160deg, var(--soft), var(--surface)); cursor: pointer; }
+.artshape svg, .artprev svg { width: 100%; height: 100%; display: block; }
+.sh-line { fill: none; stroke: var(--accent-text); stroke-width: 3.6px; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.sh-gap { fill: none; stroke: #E67E22; stroke-width: 3px; stroke-linecap: round; stroke-dasharray: 1 7; vector-effect: non-scaling-stroke; }
+.sh-s { fill: #12B886; stroke: #fff; stroke-width: 1.2px; vector-effect: non-scaling-stroke; }
+.sh-e { fill: #F2476A; stroke: #fff; stroke-width: 1.2px; vector-effect: non-scaling-stroke; }
+.artmeta { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.arttitle { font-size: 18px; line-height: 1.3; overflow-wrap: anywhere; }
+.artsub { font-size: 14px; color: var(--muted); overflow-wrap: anywhere; }
+.artnote { font-size: 15px; overflow-wrap: anywhere; }
+.artact { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 4px; }
+.artact .cheer { min-height: 40px; padding: 0 12px; font-size: 15px; }
+.artact .delbtn { min-height: 40px; }
+.tag.ok { color: var(--live); border-color: currentColor; margin-left: 0; }
+.artempty { grid-column: 1 / -1; }
+.artprev { height: 260px; border-radius: 16px; background: linear-gradient(160deg, var(--soft), var(--surface)); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; }
+#apRun { width: 100%; min-height: 56px; border: 2px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); font: 500 19px var(--font-body); padding: 0 10px; }
 </style>
 <link rel="stylesheet" href="leaflet.css">
 </head>
@@ -257,6 +280,7 @@ h1 { letter-spacing: -.01em; }
   <nav class="tabs" role="tablist" aria-label="화면 선택">
     <button type="button" role="tab" data-tab="run" id="t-run" aria-selected="true">달리기</button>
     <button type="button" role="tab" data-tab="board" id="t-board" aria-selected="false">현황판</button>
+    <button type="button" role="tab" data-tab="art" id="t-art" aria-selected="false">그림길</button>
     <button type="button" role="tab" data-tab="check" id="t-check" aria-selected="false">점검</button>
   </nav>
 
@@ -361,6 +385,16 @@ h1 { letter-spacing: -.01em; }
       </div>
     </section>
 
+    <section id="p-art" role="tabpanel" aria-labelledby="t-art" hidden style="flex-direction:column;gap:14px">
+      <div class="card">
+        <h2>그림길</h2>
+        <p class="hint">달린 길이 그림이 되도록 달려 보세요. GPS로 실제 달린 기록만 올릴 수 있고, 올리면 모두가 구경하고 응원합니다.</p>
+        <button type="button" id="artNew" class="btn btn-primary">내 그림 올리기</button>
+      </div>
+      <p id="artMsg" class="hint" hidden></p>
+      <div id="artList" class="artgrid"></div>
+    </section>
+
     <section id="p-check" role="tabpanel" aria-labelledby="t-check" hidden style="flex-direction:column;gap:14px">
       <div id="adminSec" class="card adm" hidden>
         <h2>운영진 관리</h2>
@@ -434,6 +468,18 @@ h1 { letter-spacing: -.01em; }
     <button type="button" id="neClear" class="btn btn-ghost danger">공지 내리기</button>
   </div>
 </div>
+<div id="artPost" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="apTitleH">
+  <div class="sheet">
+    <div class="row"><h2 id="apTitleH">내 그림 올리기</h2><button type="button" id="apClose" class="link">닫기</button></div>
+    <div><label for="apRun">올릴 기록 (GPS로 달린 것만)</label><select id="apRun"></select></div>
+    <div id="apPrev" class="artprev"></div>
+    <div><label for="apTitle">그림 제목 (20자까지)</label><input id="apTitle" maxlength="20" autocomplete="off" placeholder="예: 십자가"></div>
+    <div><label for="apNote">한마디 (선택, 60자까지)</label><input id="apNote" maxlength="60" autocomplete="off" placeholder="예: 새벽에 호수공원 한 바퀴"></div>
+    <p class="hint">올리면 모든 회원이 이 길을 볼 수 있습니다. 카드에는 길 모양만 보이고, 지도는 카드를 눌렀을 때만 열립니다. 집 위치가 걱정되면 달리기 전에 ‘시작과 끝 150m 가리기’를 체크하세요.</p>
+    <p id="apMsg" class="msg" role="alert"></p>
+    <button type="button" id="apSave" class="btn btn-primary">올리기</button>
+  </div>
+</div>
 <div id="routeView" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="rvTitle">
   <div class="sheet">
     <div class="row"><h2 id="rvTitle">달린 길</h2><button type="button" id="rvClose" class="link">닫기</button></div>
@@ -442,6 +488,7 @@ h1 { letter-spacing: -.01em; }
     <p id="rvMsg" class="msg" hidden></p>
     <p id="rvNote" class="hint" hidden></p>
     <button type="button" id="rvAlt" class="link" hidden>지도가 안 보이면 기본 지도로 바꾸기</button>
+    <button type="button" id="rvSave" class="btn btn-primary sm" hidden>이미지로 저장 · 공유</button>
     <p class="hint">초록 점은 출발, 빨간 점은 도착입니다. 달린 사람이 집 위치 보호를 선택했다면 시작과 끝 구간이 빠져 있을 수 있습니다.</p>
   </div>
 </div>
@@ -654,6 +701,9 @@ if (typeof module !== 'undefined') module.exports = RL;
     postMsg: function (text) { return rpc('postMsg', authBody({ text: text })).then(function (j) { S.msgs.unshift(j.msg); }); },
     deleteMsg: function (id) { return rpc('deleteMsg', authBody({ msgId: id })).then(function () { S.msgs = S.msgs.filter(function (m) { return m.id !== id; }); }); },
     adminOp: function (op, uid) { return rpc('admin', authBody({ op: op, uid: uid })).then(function (j) { S.admins = j.admins || []; }); },
+    artList: function () { return rpc('artList', authBody()).then(function (j) { return (j.art || []).map(function (a) { a.cheers = a.cheers || []; return a; }); }); },
+    artPost: function (runId, title, note) { return rpc('artPost', authBody({ runId: runId, title: title, note: note })); },
+    artDelete: function (id) { return rpc('artDelete', authBody({ artId: id })); },
     cheer: function (runId) {
       var key = runId + '_' + S.uid, was = !!S.cheers[key];
       if (was) delete S.cheers[key]; else S.cheers[key] = { runId: runId, from: S.uid };
@@ -677,6 +727,9 @@ if (typeof module !== 'undefined') module.exports = RL;
     postMsg: function (text) { S.msgs.unshift({ id: 'l' + now(), uid: S.uid, text: text, at: now(), local: true }); Local.save(); return Promise.resolve(); },
     deleteMsg: function (id) { S.msgs = S.msgs.filter(function (m) { return m.id !== id; }); Local.save(); return Promise.resolve(); },
     adminOp: function () { return Promise.reject({ error: 'forbidden', message: '체험 모드에서는 쓸 수 없습니다.' }); },
+    artList: function () { return Promise.resolve([]); },
+    artPost: function () { return Promise.reject({ error: 'forbidden', message: '체험 모드에서는 쓸 수 없습니다.' }); },
+    artDelete: function () { return Promise.resolve(); },
     liveSet: function (o) { S.live[S.uid] = Object.assign({ updatedAt: now() }, o); renderBoard(); return Promise.resolve(); },
     liveClear: function () { delete S.live[S.uid]; renderBoard(); return Promise.resolve(); },
     cheer: function (runId) { var k = runId + '_' + S.uid; if (S.cheers[k]) delete S.cheers[k]; else S.cheers[k] = { runId: runId, from: S.uid, local: true }; Local.save(); renderBoard(); return Promise.resolve(); },
@@ -1031,13 +1084,13 @@ if (typeof module !== 'undefined') module.exports = RL;
     if (M.follow) { if (!M.had) { M.map.center(M.last); M.had = true; } else M.map.pan(M.last); }
   }
 
-  var RV = { map: null, cache: {}, seq: 0, openId: null };
+  var RV = { map: null, cache: {}, seq: 0, openId: null, saveItem: null };
   function closeRoute() { $('routeView').hidden = true; RV.seq++; RV.openId = null; }
-  async function openRoute(runId) {
-    var r = allRuns().filter(function (x) { return x.id === runId; })[0] || {};
-    var seq = ++RV.seq, msg = $('rvMsg'); RV.openId = runId;
-    $('rvTitle').textContent = nameOf(r.uid) + '님이 달린 길';
-    $('rvInfo').textContent = (r.km ? Number(r.km).toFixed(2) + 'km' : '') + (r.at ? ' · ' + RL.dateLabel(r.at) : '');
+  async function openRoute(runId, art) {
+    var r = allRuns().filter(function (x) { return x.id === runId; })[0] || (art ? { uid: art.uid, km: art.km, at: art.runAt } : {});
+    var seq = ++RV.seq, msg = $('rvMsg'); RV.openId = runId; RV.saveItem = art || null; $('rvSave').hidden = !art;
+    $('rvTitle').textContent = art ? art.title : nameOf(r.uid) + '님이 달린 길';
+    $('rvInfo').textContent = (art ? art.name + ' · ' : '') + (r.km ? Number(r.km).toFixed(2) + 'km' : '') + (r.at ? ' · ' + RL.dateLabel(r.at) : '');
     msg.hidden = true; msg.textContent = ''; $('rvNote').hidden = true;
     $('routeView').hidden = false;
     if (!RV.map) {
@@ -1546,15 +1599,147 @@ if (typeof module !== 'undefined') module.exports = RL;
     catch (e) { toast('위 글을 길게 눌러 복사해 주세요.'); }
   }
 
+  // ---------- 그림길 (달린 길을 그림처럼 올리는 갤러리) ----------
+  var ART = { items: [], loaded: false, loading: false, err: '', seq: 0 };
+  var AP = { runs: [], seq: 0 };
+  function shapeBox(pts) {
+    var la0 = 1e9, la1 = -1e9, lo0 = 1e9, lo1 = -1e9;
+    pts.forEach(function (p) { if (p[0] < la0) la0 = p[0]; if (p[0] > la1) la1 = p[0]; if (p[1] < lo0) lo0 = p[1]; if (p[1] > lo1) lo1 = p[1]; });
+    var k = Math.cos((la0 + la1) / 2 * Math.PI / 180), w = (lo1 - lo0) * k, h = la1 - la0;
+    return { la1: la1, lo0: lo0, k: k, w: w, h: h, s: Math.max(w, h) || 1e-9 };
+  }
+  function shapeXY(b, p, size, pad) {
+    var u = (size - 2 * pad) / b.s;
+    return [pad + (size - 2 * pad - b.w * u) / 2 + (p[1] - b.lo0) * b.k * u, pad + (size - 2 * pad - b.h * u) / 2 + (b.la1 - p[0]) * u];
+  }
+  // 길 모양만 그린 그림(지도 없음). 화면이 꺼져 있던 구간은 주황 점선.
+  function shapeSvg(enc, label) {
+    var dr = decRoute(enc), pts = dr.pts; if (pts.length < 2) return '';
+    var b = shapeBox(pts), segs = toSegs(pts, dr.gi);
+    var d = function (sg) { return sg.pts.map(function (p, i) { var q = shapeXY(b, p, 100, 9); return (i ? 'L' : 'M') + q[0].toFixed(1) + ' ' + q[1].toFixed(1); }).join(''); };
+    var h = '<svg viewBox="0 0 100 100" role="img" aria-label="' + esc(label || '달린 길 모양') + '">';
+    segs.forEach(function (sg) { if (sg.pts.length > 1) h += '<path d="' + d(sg) + '" class="' + (sg.dash ? 'sh-gap' : 'sh-line') + '"/>'; });
+    var a = shapeXY(b, pts[0], 100, 9), z = shapeXY(b, pts[pts.length - 1], 100, 9);
+    return h + '<circle cx="' + a[0].toFixed(1) + '" cy="' + a[1].toFixed(1) + '" r="2.6" class="sh-s"/><circle cx="' + z[0].toFixed(1) + '" cy="' + z[1].toFixed(1) + '" r="2.6" class="sh-e"/></svg>';
+  }
+  async function loadArt() {
+    if (!REMOTE) { ART.err = '체험 모드에서는 그림길을 쓸 수 없습니다. (서버 주소가 설정되면 열립니다)'; renderArt(); return; }
+    if (!S.me) { ART.err = '달리기 화면에서 이름을 등록하면 그림길을 볼 수 있습니다.'; renderArt(); return; }
+    var seq = ++ART.seq; ART.loading = true; ART.err = ''; renderArt();
+    try {
+      var items = await B.artList(); if (seq !== ART.seq) return;
+      ART.items = items; ART.loaded = true;
+      items.forEach(function (it) { RV.cache[it.runId] = it.route; });
+    } catch (e) {
+      if (seq !== ART.seq) return;
+      if (ART.loaded) toast('그림길을 새로 불러오지 못했습니다.'); else ART.err = errText(e);
+    }
+    ART.loading = false; renderArt();
+  }
+  function renderArt() {
+    var box = $('artList'), msg = $('artMsg'); if (!box) return;
+    var m = ART.err || (ART.loading && !ART.loaded ? '불러오는 중…' : '');
+    msg.hidden = !m; msg.textContent = m;
+    $('artNew').disabled = !(REMOTE && S.me);
+    var items = ART.items;
+    if (!items.length) { box.innerHTML = (ART.loaded && !ART.err) ? '<p class="empty artempty">아직 올라온 그림이 없습니다. 첫 그림을 올려 보세요!</p>' : ''; return; }
+    box.innerHTML = items.map(function (it) {
+      var own = it.uid === S.uid, mine = it.cheers.indexOf(S.uid) >= 0;
+      var act = own ? '<span class="hint">응원 ' + it.cheers.length + '</span>' : '<button type="button" class="cheer' + (mine ? ' on' : '') + '" data-artcheer="' + esc(it.runId) + '" aria-pressed="' + mine + '">' + (mine ? '응원함 ' : '응원 ') + it.cheers.length + '</button>';
+      var del = (own || isAdmin()) ? '<button type="button" class="delbtn" data-artdel="' + esc(it.id) + '">삭제</button>' : '';
+      return '<article class="artcard"><button type="button" class="artshape" data-artopen="' + esc(it.id) + '" aria-label="' + esc(it.title) + ' 지도로 보기">' + shapeSvg(it.route, it.title) + '</button>' +
+        '<div class="artmeta"><b class="arttitle">' + esc(it.title) + '</b><span class="artsub">' + esc(it.name) + (own ? '<span class="tag me">나</span>' : '') + ' · ' + Number(it.km).toFixed(2) + 'km · ' + esc(RL.dateLabel(it.runAt)) + '</span>' +
+        (it.note ? '<p class="artnote">' + esc(it.note) + '</p>' : '') +
+        '<div class="artact"><span class="tag ok">GPS 인증</span>' + act + del + '</div></div></article>';
+    }).join('');
+  }
+  async function artCheer(runId, btn) {
+    btn.disabled = true;
+    try {
+      await B.cheer(runId);
+      var it = ART.items.filter(function (x) { return x.runId === runId; })[0];
+      if (it) { it.cheers = it.cheers.filter(function (u) { return u !== S.uid; }); if (S.cheers[runId + '_' + S.uid]) it.cheers.push(S.uid); }
+    } catch (e) { toast(errText(e)); }
+    renderArt();
+  }
+  function openArtPost() {
+    if (!ART.loaded) { toast('그림길을 불러온 뒤에 올릴 수 있습니다.'); loadArt(); return; }
+    var posted = {}; ART.items.forEach(function (it) { posted[it.runId] = 1; });
+    AP.runs = S.runs.filter(function (r) { return r.uid === S.uid && r.src === 'gps' && r.hasRoute && !posted[r.id]; }).sort(function (a, b) { return b.at - a.at; }).slice(0, 20);
+    if (!AP.runs.length) { toast('올릴 수 있는 기록이 없습니다. GPS로 달린 기록(지도가 있는 기록)만 올릴 수 있어요.'); return; }
+    $('apMsg').textContent = ''; $('apTitle').value = ''; $('apNote').value = '';
+    $('apRun').innerHTML = AP.runs.map(function (r) { return '<option value="' + esc(r.id) + '">' + esc(RL.whenLabel(r.at, serverNow())) + ' · ' + Number(r.km).toFixed(2) + 'km</option>'; }).join('');
+    $('artPost').hidden = false; apPreview();
+  }
+  async function apPreview() {
+    var id = $('apRun').value, seq = ++AP.seq, box = $('apPrev'); if (!id) return;
+    box.innerHTML = '<p class="hint">길을 불러오는 중…</p>';
+    var enc = RV.cache[id];
+    try { if (!enc) { enc = await B.route(id); if (enc) RV.cache[id] = enc; } }
+    catch (e) { if (seq === AP.seq) box.innerHTML = '<p class="msg">' + esc(errText(e)) + '</p>'; return; }
+    if (seq !== AP.seq) return;
+    box.innerHTML = enc ? shapeSvg(enc, '올릴 그림 미리보기') : '<p class="hint">이 기록에는 길이 없습니다.</p>';
+  }
+  async function apSave() {
+    var b = $('apSave'), title = $('apTitle').value.trim();
+    if (!title) { $('apMsg').textContent = '그림 제목을 적어 주세요.'; return; }
+    b.disabled = true; $('apMsg').textContent = '';
+    try { await B.artPost($('apRun').value, title, $('apNote').value.trim()); $('artPost').hidden = true; toast('그림을 올렸습니다!'); await loadArt(); }
+    catch (e) { $('apMsg').textContent = errText(e); }
+    b.disabled = false;
+  }
+  // 카카오톡 등에 올릴 수 있는 이미지(길 모양 + 제목)
+  function artPng(it) {
+    return new Promise(function (resolve, reject) {
+      var dr = decRoute(it.route), pts = dr.pts; if (pts.length < 2) { reject(new Error('no route')); return; }
+      var W = 1080, H = 1350, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+      var g = cv.getContext('2d'), F = '"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif';
+      var bg = g.createLinearGradient(0, 0, W, H); bg.addColorStop(0, '#087F69'); bg.addColorStop(1, '#0A67AE'); g.fillStyle = bg; g.fillRect(0, 0, W, H);
+      g.textAlign = 'center'; g.fillStyle = '#fff';
+      var fs = 88; do { g.font = '700 ' + fs + 'px ' + F; fs -= 4; } while (g.measureText(it.title).width > 940 && fs > 36);
+      g.fillText(it.title, W / 2, 160);
+      var OX = 90, OY = 240, SZ = 900, b = shapeBox(pts), segs = toSegs(pts, dr.gi);
+      var xy = function (p) { var q = shapeXY(b, p, SZ, 50); return [OX + q[0], OY + q[1]]; };
+      g.lineCap = 'round'; g.lineJoin = 'round';
+      segs.forEach(function (sg) {
+        if (sg.pts.length < 2) return;
+        g.beginPath(); sg.pts.forEach(function (p, i) { var q = xy(p); if (i) g.lineTo(q[0], q[1]); else g.moveTo(q[0], q[1]); });
+        if (sg.dash) { g.strokeStyle = '#FFD23F'; g.lineWidth = 10; g.setLineDash([1, 22]); } else { g.strokeStyle = '#fff'; g.lineWidth = 14; g.setLineDash([]); }
+        g.stroke();
+      });
+      g.setLineDash([]);
+      [[pts[0], '#35D7B0'], [pts[pts.length - 1], '#FF7B93']].forEach(function (d) { var q = xy(d[0]); g.beginPath(); g.arc(q[0], q[1], 24, 0, 6.2832); g.fillStyle = d[1]; g.fill(); g.lineWidth = 7; g.strokeStyle = '#fff'; g.stroke(); });
+      g.fillStyle = '#fff'; g.font = '600 46px ' + F;
+      g.fillText(it.name + ' · ' + Number(it.km).toFixed(2) + 'km · ' + RL.dateLabel(it.runAt), W / 2, 1210);
+      g.font = '500 36px ' + F; g.globalAlpha = .88; g.fillText('GPS로 달린 길 · 뛰다보면 · 장유중앙교회 러닝 동아리', W / 2, 1275); g.globalAlpha = 1;
+      cv.toBlob(function (bl) { if (bl) resolve(bl); else reject(new Error('blob')); }, 'image/png');
+    });
+  }
+  async function saveArtImage() {
+    var it = RV.saveItem; if (!it) return; var btn = $('rvSave'); btn.disabled = true;
+    try {
+      var blob = await artPng(it), name = '뛰다보면_' + it.title.replace(/[\\/:*?"<>|\s]+/g, '_') + '.png';
+      var file = new File([blob], name, { type: 'image/png' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try { await navigator.share({ files: [file], title: it.title }); } catch (e) { if (!e || e.name !== 'AbortError') throw e; }
+      } else {
+        var url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function () { URL.revokeObjectURL(url); }, 4000); toast('이미지를 저장했습니다.');
+      }
+    } catch (e) { toast('이미지를 만들지 못했습니다.'); }
+    btn.disabled = false;
+  }
+
   // ---------- tabs & banner ----------
   function setTab(t) {
     S.tab = t;
-    ['run', 'board', 'check'].forEach(function (k) {
+    ['run', 'board', 'art', 'check'].forEach(function (k) {
       $('t-' + k).setAttribute('aria-selected', String(k === t));
       var p = $('p-' + k); p.hidden = k !== t;
       if (k !== 'board') p.style.display = (k === t) ? 'flex' : 'none';
     });
     if (t === 'board') { renderBoard(); if (REMOTE) refresh(); }
+    if (t === 'art') { renderArt(); loadArt(); }
     if (t === 'check') { renderInstallRow(); renderMapRow(); renderAdmins(); }
   }
   function renderInstallRow() {
@@ -1613,6 +1798,25 @@ if (typeof module !== 'undefined') module.exports = RL;
   $('rvClose').addEventListener('click', closeRoute);
   $('btnMapAlt').addEventListener('click', function () { useOsm(true); });
   $('rvAlt').addEventListener('click', function () { useOsm(true); });
+  $('p-art').addEventListener('click', async function (e) {
+    if (e.target.closest('#artNew')) { openArtPost(); return; }
+    var o = e.target.closest('button[data-artopen]');
+    if (o) { var it = ART.items.filter(function (x) { return x.id === o.getAttribute('data-artopen'); })[0]; if (it) openRoute(it.runId, it); return; }
+    var c = e.target.closest('button[data-artcheer]');
+    if (c && !c.disabled) { artCheer(c.getAttribute('data-artcheer'), c); return; }
+    var d = e.target.closest('button[data-artdel]');
+    if (d) {
+      if (!d.classList.contains('arm')) { d.classList.add('arm'); d.textContent = '한 번 더 누르면 내립니다'; setTimeout(function () { if (d.isConnected) { d.classList.remove('arm'); d.textContent = '삭제'; } }, 4000); return; }
+      d.disabled = true;
+      try { var id = d.getAttribute('data-artdel'); await B.artDelete(id); ART.items = ART.items.filter(function (x) { return x.id !== id; }); toast('그림을 내렸습니다.'); } catch (err) { toast(errText(err)); }
+      renderArt();
+    }
+  });
+  $('apClose').addEventListener('click', function () { $('artPost').hidden = true; });
+  $('artPost').addEventListener('click', function (e) { if (e.target === $('artPost')) $('artPost').hidden = true; });
+  $('apRun').addEventListener('change', apPreview);
+  $('apSave').addEventListener('click', apSave);
+  $('rvSave').addEventListener('click', saveArtImage);
   $('c-map-btn').addEventListener('click', function () { useOsm(jget(K_MAPPREF, '') !== 'osm'); });
   $('routeView').addEventListener('click', function (e) { if (e.target === $('routeView')) closeRoute(); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('routeView').hidden) closeRoute(); });
