@@ -1620,7 +1620,7 @@ if (typeof module !== 'undefined') module.exports = RL;
     var x0 = 1, x1 = 0, y0 = 1, y1 = 0;
     pts.forEach(function (p) { var m = mercXY(p[0], p[1]); if (m[0] < x0) x0 = m[0]; if (m[0] > x1) x1 = m[0]; if (m[1] < y0) y0 = m[1]; if (m[1] > y1) y1 = m[1]; });
     var span = Math.max(x1 - x0, y1 - y0, 1e-9);
-    var z = Math.max(3, Math.min(17, Math.floor(Math.log(V * 0.74 / (span * 256)) / Math.LN2)));
+    var z = Math.max(3, Math.min(19, Math.floor(Math.log(V * 0.8 / (span * 256)) / Math.LN2)));
     var W = 256 * Math.pow(2, z), n = Math.pow(2, z), ox = (x0 + x1) / 2 * W - V / 2, oy = (y0 + y1) / 2 * W - V / 2, tiles = [];
     for (var ty = Math.floor(oy / 256); ty <= Math.floor((oy + V - 1) / 256); ty++) {
       for (var tx = Math.floor(ox / 256); tx <= Math.floor((ox + V - 1) / 256); tx++) {
@@ -1851,7 +1851,7 @@ if (typeof module !== 'undefined') module.exports = RL;
       renderArt();
     }
   });
-  $('appVer').textContent = '2026.11.10-c';
+  $('appVer').textContent = '2026.11.10-d';
   $('apClose').addEventListener('click', function () { $('artPost').hidden = true; });
   $('artPost').addEventListener('click', function (e) { if (e.target === $('artPost')) $('artPost').hidden = true; });
   $('apRun').addEventListener('change', apPreview);
