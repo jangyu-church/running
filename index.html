@@ -265,6 +265,16 @@ h1 { letter-spacing: -.01em; }
 .artempty { grid-column: 1 / -1; }
 .artprev { height: 260px; border-radius: 16px; background: linear-gradient(160deg, var(--soft), var(--surface)); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; }
 #apRun { width: 100%; min-height: 56px; border: 2px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); font: 500 19px var(--font-body); padding: 0 10px; }
+
+/* ===== 그림길: 지도 위에 얹은 길 ===== */
+.mapthumb { position: relative; width: 100%; height: 100%; overflow: hidden; background: linear-gradient(160deg, var(--soft), var(--surface)); }
+.mapthumb .mt { position: absolute; display: block; max-width: none; user-select: none; -webkit-user-select: none; pointer-events: none; }
+.mapthumb svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.mapthumb .sh-case { fill: none; stroke: #fff; stroke-width: 8px; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; opacity: .95; }
+.mapthumb .sh-line { stroke: #1B8BF0; stroke-width: 4.5px; }
+.mapthumb .sh-gap { stroke-width: 3.5px; }
+.artprev .mapthumb { width: auto; height: 100%; aspect-ratio: 1; border-radius: 16px; }
+.artcredit { text-align: center; font-size: 13px; }
 </style>
 <link rel="stylesheet" href="leaflet.css">
 </head>
@@ -393,6 +403,7 @@ h1 { letter-spacing: -.01em; }
       </div>
       <p id="artMsg" class="hint" hidden></p>
       <div id="artList" class="artgrid"></div>
+      <p class="hint artcredit">지도 © OpenStreetMap 기여자</p>
     </section>
 
     <section id="p-check" role="tabpanel" aria-labelledby="t-check" hidden style="flex-direction:column;gap:14px">
@@ -475,7 +486,7 @@ h1 { letter-spacing: -.01em; }
     <div id="apPrev" class="artprev"></div>
     <div><label for="apTitle">그림 제목 (20자까지)</label><input id="apTitle" maxlength="20" autocomplete="off" placeholder="예: 십자가"></div>
     <div><label for="apNote">한마디 (선택, 60자까지)</label><input id="apNote" maxlength="60" autocomplete="off" placeholder="예: 새벽에 호수공원 한 바퀴"></div>
-    <p class="hint">올리면 모든 회원이 이 길을 볼 수 있습니다. 카드에는 길 모양만 보이고, 지도는 카드를 눌렀을 때만 열립니다. 집 위치가 걱정되면 달리기 전에 ‘시작과 끝 150m 가리기’를 체크하세요.</p>
+    <p class="hint">올리면 모든 회원이 지도 위에 그려진 이 길을 볼 수 있습니다. 집 근처를 달렸다면 달리기 전에 ‘시작과 끝 150m 가리기’를 체크하세요.</p>
     <p id="apMsg" class="msg" role="alert"></p>
     <button type="button" id="apSave" class="btn btn-primary">올리기</button>
   </div>
@@ -1602,25 +1613,37 @@ if (typeof module !== 'undefined') module.exports = RL;
   // ---------- 그림길 (달린 길을 그림처럼 올리는 갤러리) ----------
   var ART = { items: [], loaded: false, loading: false, err: '', seq: 0 };
   var AP = { runs: [], seq: 0 };
-  function shapeBox(pts) {
-    var la0 = 1e9, la1 = -1e9, lo0 = 1e9, lo1 = -1e9;
-    pts.forEach(function (p) { if (p[0] < la0) la0 = p[0]; if (p[0] > la1) la1 = p[0]; if (p[1] < lo0) lo0 = p[1]; if (p[1] > lo1) lo1 = p[1]; });
-    var k = Math.cos((la0 + la1) / 2 * Math.PI / 180), w = (lo1 - lo0) * k, h = la1 - la0;
-    return { la1: la1, lo0: lo0, k: k, w: w, h: h, s: Math.max(w, h) || 1e-9 };
+  // 지도 위에 길을 얹은 그림: 지도 조각(OpenStreetMap)을 카드 크기에 맞춰 깔고 그 위에 SVG로 길을 그린다.
+  function mercXY(lat, lon) { var s = Math.sin(lat * Math.PI / 180); return [(lon + 180) / 360, 0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)]; }
+  function mapView(pts, V) {
+    var x0 = 1, x1 = 0, y0 = 1, y1 = 0;
+    pts.forEach(function (p) { var m = mercXY(p[0], p[1]); if (m[0] < x0) x0 = m[0]; if (m[0] > x1) x1 = m[0]; if (m[1] < y0) y0 = m[1]; if (m[1] > y1) y1 = m[1]; });
+    var span = Math.max(x1 - x0, y1 - y0, 1e-9);
+    var z = Math.max(3, Math.min(17, Math.floor(Math.log(V * 0.74 / (span * 256)) / Math.LN2)));
+    var W = 256 * Math.pow(2, z), n = Math.pow(2, z), ox = (x0 + x1) / 2 * W - V / 2, oy = (y0 + y1) / 2 * W - V / 2, tiles = [];
+    for (var ty = Math.floor(oy / 256); ty <= Math.floor((oy + V - 1) / 256); ty++) {
+      for (var tx = Math.floor(ox / 256); tx <= Math.floor((ox + V - 1) / 256); tx++) {
+        if (ty < 0 || ty >= n) continue;
+        tiles.push({ x: ((tx % n) + n) % n, y: ty, l: tx * 256 - ox, t: ty * 256 - oy });
+      }
+    }
+    return { z: z, V: V, tiles: tiles, xy: function (p) { var m = mercXY(p[0], p[1]); return [m[0] * W - ox, m[1] * W - oy]; } };
   }
-  function shapeXY(b, p, size, pad) {
-    var u = (size - 2 * pad) / b.s;
-    return [pad + (size - 2 * pad - b.w * u) / 2 + (p[1] - b.lo0) * b.k * u, pad + (size - 2 * pad - b.h * u) / 2 + (b.la1 - p[0]) * u];
-  }
-  // 길 모양만 그린 그림(지도 없음). 화면이 꺼져 있던 구간은 주황 점선.
-  function shapeSvg(enc, label) {
+  function tileUrl(z, t) { return 'https://tile.openstreetmap.org/' + z + '/' + t.x + '/' + t.y + '.png'; }
+  function mapShape(enc, label) {
     var dr = decRoute(enc), pts = dr.pts; if (pts.length < 2) return '';
-    var b = shapeBox(pts), segs = toSegs(pts, dr.gi);
-    var d = function (sg) { return sg.pts.map(function (p, i) { var q = shapeXY(b, p, 100, 9); return (i ? 'L' : 'M') + q[0].toFixed(1) + ' ' + q[1].toFixed(1); }).join(''); };
-    var h = '<svg viewBox="0 0 100 100" role="img" aria-label="' + esc(label || '달린 길 모양') + '">';
+    var V = 320, mv = mapView(pts, V), segs = toSegs(pts, dr.gi);
+    var f = function (v) { return v.toFixed(1); };
+    var d = function (sg) { return sg.pts.map(function (p, i) { var q = mv.xy(p); return (i ? 'L' : 'M') + f(q[0]) + ' ' + f(q[1]); }).join(''); };
+    var tw = (256 / V * 100).toFixed(3) + '%';
+    var h = '<div class="mapthumb">' + mv.tiles.map(function (t) {
+      return '<img class="mt" alt="" loading="lazy" decoding="async" draggable="false" src="' + tileUrl(mv.z, t) + '" style="left:' + (t.l / V * 100).toFixed(3) + '%;top:' + (t.t / V * 100).toFixed(3) + '%;width:' + tw + ';height:' + tw + '">';
+    }).join('');
+    h += '<svg viewBox="0 0 320 320" role="img" aria-label="' + esc(label || '달린 길 모양') + '">';
+    segs.forEach(function (sg) { if (sg.pts.length > 1 && !sg.dash) h += '<path d="' + d(sg) + '" class="sh-case"/>'; });
     segs.forEach(function (sg) { if (sg.pts.length > 1) h += '<path d="' + d(sg) + '" class="' + (sg.dash ? 'sh-gap' : 'sh-line') + '"/>'; });
-    var a = shapeXY(b, pts[0], 100, 9), z = shapeXY(b, pts[pts.length - 1], 100, 9);
-    return h + '<circle cx="' + a[0].toFixed(1) + '" cy="' + a[1].toFixed(1) + '" r="2.6" class="sh-s"/><circle cx="' + z[0].toFixed(1) + '" cy="' + z[1].toFixed(1) + '" r="2.6" class="sh-e"/></svg>';
+    var a = mv.xy(pts[0]), z = mv.xy(pts[pts.length - 1]);
+    return h + '<circle cx="' + f(a[0]) + '" cy="' + f(a[1]) + '" r="7" class="sh-s"/><circle cx="' + f(z[0]) + '" cy="' + f(z[1]) + '" r="7" class="sh-e"/></svg></div>';
   }
   async function loadArt() {
     if (!REMOTE) { ART.err = '체험 모드에서는 그림길을 쓸 수 없습니다. (서버 주소가 설정되면 열립니다)'; renderArt(); return; }
@@ -1647,7 +1670,7 @@ if (typeof module !== 'undefined') module.exports = RL;
       var own = it.uid === S.uid, mine = it.cheers.indexOf(S.uid) >= 0;
       var act = own ? '<span class="hint">응원 ' + it.cheers.length + '</span>' : '<button type="button" class="cheer' + (mine ? ' on' : '') + '" data-artcheer="' + esc(it.runId) + '" aria-pressed="' + mine + '">' + (mine ? '응원함 ' : '응원 ') + it.cheers.length + '</button>';
       var del = (own || isAdmin()) ? '<button type="button" class="delbtn" data-artdel="' + esc(it.id) + '">삭제</button>' : '';
-      return '<article class="artcard"><button type="button" class="artshape" data-artopen="' + esc(it.id) + '" aria-label="' + esc(it.title) + ' 지도로 보기">' + shapeSvg(it.route, it.title) + '</button>' +
+      return '<article class="artcard"><button type="button" class="artshape" data-artopen="' + esc(it.id) + '" aria-label="' + esc(it.title) + ' 지도로 보기">' + mapShape(it.route, it.title) + '</button>' +
         '<div class="artmeta"><b class="arttitle">' + esc(it.title) + '</b><span class="artsub">' + esc(it.name) + (own ? '<span class="tag me">나</span>' : '') + ' · ' + Number(it.km).toFixed(2) + 'km · ' + esc(RL.dateLabel(it.runAt)) + '</span>' +
         (it.note ? '<p class="artnote">' + esc(it.note) + '</p>' : '') +
         '<div class="artact"><span class="tag ok">GPS 인증</span>' + act + del + '</div></div></article>';
@@ -1678,7 +1701,7 @@ if (typeof module !== 'undefined') module.exports = RL;
     try { if (!enc) { enc = await B.route(id); if (enc) RV.cache[id] = enc; } }
     catch (e) { if (seq === AP.seq) box.innerHTML = '<p class="msg">' + esc(errText(e)) + '</p>'; return; }
     if (seq !== AP.seq) return;
-    box.innerHTML = enc ? shapeSvg(enc, '올릴 그림 미리보기') : '<p class="hint">이 기록에는 길이 없습니다.</p>';
+    box.innerHTML = enc ? mapShape(enc, '올릴 그림 미리보기') : '<p class="hint">이 기록에는 길이 없습니다.</p>';
   }
   async function apSave() {
     var b = $('apSave'), title = $('apTitle').value.trim();
@@ -1688,32 +1711,47 @@ if (typeof module !== 'undefined') module.exports = RL;
     catch (e) { $('apMsg').textContent = errText(e); }
     b.disabled = false;
   }
-  // 카카오톡 등에 올릴 수 있는 이미지(길 모양 + 제목)
-  function artPng(it) {
-    return new Promise(function (resolve, reject) {
-      var dr = decRoute(it.route), pts = dr.pts; if (pts.length < 2) { reject(new Error('no route')); return; }
-      var W = 1080, H = 1350, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
-      var g = cv.getContext('2d'), F = '"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif';
-      var bg = g.createLinearGradient(0, 0, W, H); bg.addColorStop(0, '#087F69'); bg.addColorStop(1, '#0A67AE'); g.fillStyle = bg; g.fillRect(0, 0, W, H);
-      g.textAlign = 'center'; g.fillStyle = '#fff';
-      var fs = 88; do { g.font = '700 ' + fs + 'px ' + F; fs -= 4; } while (g.measureText(it.title).width > 940 && fs > 36);
-      g.fillText(it.title, W / 2, 160);
-      var OX = 90, OY = 240, SZ = 900, b = shapeBox(pts), segs = toSegs(pts, dr.gi);
-      var xy = function (p) { var q = shapeXY(b, p, SZ, 50); return [OX + q[0], OY + q[1]]; };
-      g.lineCap = 'round'; g.lineJoin = 'round';
-      segs.forEach(function (sg) {
-        if (sg.pts.length < 2) return;
-        g.beginPath(); sg.pts.forEach(function (p, i) { var q = xy(p); if (i) g.lineTo(q[0], q[1]); else g.moveTo(q[0], q[1]); });
-        if (sg.dash) { g.strokeStyle = '#FFD23F'; g.lineWidth = 10; g.setLineDash([1, 22]); } else { g.strokeStyle = '#fff'; g.lineWidth = 14; g.setLineDash([]); }
-        g.stroke();
-      });
-      g.setLineDash([]);
-      [[pts[0], '#35D7B0'], [pts[pts.length - 1], '#FF7B93']].forEach(function (d) { var q = xy(d[0]); g.beginPath(); g.arc(q[0], q[1], 24, 0, 6.2832); g.fillStyle = d[1]; g.fill(); g.lineWidth = 7; g.strokeStyle = '#fff'; g.stroke(); });
-      g.fillStyle = '#fff'; g.font = '600 46px ' + F;
-      g.fillText(it.name + ' · ' + Number(it.km).toFixed(2) + 'km · ' + RL.dateLabel(it.runAt), W / 2, 1210);
-      g.font = '500 36px ' + F; g.globalAlpha = .88; g.fillText('GPS로 달린 길 · 뛰다보면 · 장유중앙교회 러닝 동아리', W / 2, 1275); g.globalAlpha = 1;
-      cv.toBlob(function (bl) { if (bl) resolve(bl); else reject(new Error('blob')); }, 'image/png');
+  // 카카오톡 등에 올릴 수 있는 이미지(지도 위의 길 + 제목). 지도를 못 받으면 길 모양만 그린다.
+  function loadImg(src) {
+    return new Promise(function (res) {
+      var im = new Image(), t = setTimeout(function () { res(null); }, 7000);
+      im.crossOrigin = 'anonymous';
+      im.onload = function () { clearTimeout(t); res(im); };
+      im.onerror = function () { clearTimeout(t); res(null); };
+      im.src = src;
     });
+  }
+  function rr(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+  async function artPng(it) {
+    var dr = decRoute(it.route), pts = dr.pts; if (pts.length < 2) throw new Error('no route');
+    var W = 1080, H = 1350, SZ = 900, OX = 90, OY = 240, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    var g = cv.getContext('2d'), F = '"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif';
+    var mv = mapView(pts, SZ), segs = toSegs(pts, dr.gi);
+    var imgs = await Promise.all(mv.tiles.map(function (t) { return loadImg(tileUrl(mv.z, t)); }));
+    var gotMap = imgs.some(function (x) { return !!x; });
+    var bg = g.createLinearGradient(0, 0, W, H); bg.addColorStop(0, '#087F69'); bg.addColorStop(1, '#0A67AE'); g.fillStyle = bg; g.fillRect(0, 0, W, H);
+    g.textAlign = 'center'; g.fillStyle = '#fff';
+    var fs = 88; do { g.font = '700 ' + fs + 'px ' + F; fs -= 4; } while (g.measureText(it.title).width > 940 && fs > 36);
+    g.fillText(it.title, W / 2, 160);
+    g.save(); rr(g, OX, OY, SZ, SZ, 40); g.clip();
+    g.fillStyle = gotMap ? '#EAF3EF' : 'rgba(255,255,255,.10)'; g.fillRect(OX, OY, SZ, SZ);
+    mv.tiles.forEach(function (t, i) { if (imgs[i]) g.drawImage(imgs[i], OX + t.l, OY + t.t, 256, 256); });
+    g.restore();
+    var xy = function (p) { var q = mv.xy(p); return [OX + q[0], OY + q[1]]; };
+    var trace = function (sg) { g.beginPath(); sg.pts.forEach(function (p, i) { var q = xy(p); if (i) g.lineTo(q[0], q[1]); else g.moveTo(q[0], q[1]); }); };
+    g.lineCap = 'round'; g.lineJoin = 'round';
+    segs.forEach(function (sg) {
+      if (sg.pts.length < 2) return;
+      if (sg.dash) { trace(sg); g.strokeStyle = gotMap ? '#E67E22' : '#FFD23F'; g.lineWidth = 10; g.setLineDash([1, 22]); g.stroke(); g.setLineDash([]); return; }
+      if (gotMap) { trace(sg); g.strokeStyle = '#fff'; g.lineWidth = 24; g.stroke(); }
+      trace(sg); g.strokeStyle = gotMap ? '#1B8BF0' : '#fff'; g.lineWidth = 14; g.stroke();
+    });
+    [[pts[0], gotMap ? '#12B886' : '#35D7B0'], [pts[pts.length - 1], gotMap ? '#F2476A' : '#FF7B93']].forEach(function (d) { var q = xy(d[0]); g.beginPath(); g.arc(q[0], q[1], 24, 0, 6.2832); g.fillStyle = d[1]; g.fill(); g.lineWidth = 7; g.strokeStyle = '#fff'; g.stroke(); });
+    if (gotMap) { g.font = '500 24px ' + F; g.textAlign = 'right'; g.fillStyle = 'rgba(255,255,255,.85)'; g.fillRect(OX + SZ - 250, OY + SZ - 40, 250, 40); g.fillStyle = '#333'; g.fillText('© OpenStreetMap 기여자', OX + SZ - 10, OY + SZ - 11); g.textAlign = 'center'; }
+    g.fillStyle = '#fff'; g.font = '600 46px ' + F;
+    g.fillText(it.name + ' · ' + Number(it.km).toFixed(2) + 'km · ' + RL.dateLabel(it.runAt), W / 2, 1210);
+    g.font = '500 36px ' + F; g.globalAlpha = .88; g.fillText('GPS로 달린 길 · 뛰다보면 · 장유중앙교회 러닝 동아리', W / 2, 1275); g.globalAlpha = 1;
+    return new Promise(function (resolve, reject) { cv.toBlob(function (bl) { if (bl) resolve(bl); else reject(new Error('blob')); }, 'image/png'); });
   }
   async function saveArtImage() {
     var it = RV.saveItem; if (!it) return; var btn = $('rvSave'); btn.disabled = true;
