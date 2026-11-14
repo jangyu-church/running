@@ -275,6 +275,69 @@ h1 { letter-spacing: -.01em; }
 .mapthumb .sh-gap { stroke-width: 3.5px; }
 .artprev .mapthumb { width: auto; height: 100%; aspect-ratio: 1; border-radius: 16px; }
 .artcredit { text-align: center; font-size: 13px; }
+
+/* ===== 산뜻 화려 3차 (2026.11.14): 민트·하늘·보라 + 코랄·노랑 포인트, 주간/월간 전광판 ===== */
+:root {
+  --bg: #F3FBFF; --glow: #C9F6E7; --glow2: #DADBFF; --surface: #FFFFFF; --ink: #0E2A3A; --muted: #43606E; --line: #CBE5EE; --soft: #E0F4FA;
+  --accent: #12E3A9; --accent2: #22B8FF; --accent3: #8B7BFF; --accent-ink: #06283A; --accent-text: #007A63; --live: #007A63; --pop: #FF3D6E; --sun: #FFC93C;
+  --hero1: #00846D; --hero2: #0C76C8; --hero3: #5B54E8; --mo1: #D81E5B; --mo2: #E0561E;
+  --shadow: 0 3px 14px rgba(30, 90, 140, .10);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #091620; --glow: #0C4046; --glow2: #231F59; --surface: #10222C; --ink: #EAF6F8; --muted: #A2C0C8; --line: #24434F; --soft: #153544;
+    --accent: #2CF0BC; --accent2: #3CC8FF; --accent3: #A194FF; --accent-ink: #032B24; --accent-text: #5FF0CB; --live: #5FF0CB; --pop: #FF7B9A; --sun: #FFD45E;
+    --hero1: #007A68; --hero2: #0A66B8; --hero3: #4A43D0; --mo1: #B8184D; --mo2: #C24A18;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #091620; --glow: #0C4046; --glow2: #231F59; --surface: #10222C; --ink: #EAF6F8; --muted: #A2C0C8; --line: #24434F; --soft: #153544;
+  --accent: #2CF0BC; --accent2: #3CC8FF; --accent3: #A194FF; --accent-ink: #032B24; --accent-text: #5FF0CB; --live: #5FF0CB; --pop: #FF7B9A; --sun: #FFD45E;
+  --hero1: #007A68; --hero2: #0A66B8; --hero3: #4A43D0; --mo1: #B8184D; --mo2: #C24A18;
+}
+body { background: radial-gradient(560px 340px at 0% 0%, var(--glow) 0, transparent 72%), radial-gradient(560px 360px at 100% 0%, var(--glow2) 0, transparent 72%), var(--bg); background-repeat: no-repeat; }
+.btn-primary, .modeswitch button[aria-pressed="true"], .seg button[aria-pressed="true"] { background: linear-gradient(135deg, var(--accent), var(--accent2) 60%, var(--accent3)); color: var(--accent-ink); }
+.btn-primary { box-shadow: 0 5px 16px rgba(34, 184, 255, .38); }
+.tabs { background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); }
+.tabs button[aria-selected="true"] { color: #fff; box-shadow: 0 3px 10px rgba(14, 42, 58, .22); }
+#t-run[aria-selected="true"] { background: linear-gradient(135deg, #00846D, #00957B); }
+#t-board[aria-selected="true"] { background: linear-gradient(135deg, #0B74D1, #1F8BE6); }
+#t-art[aria-selected="true"] { background: linear-gradient(135deg, #6A3FE0, #8A5CF0); }
+#t-check[aria-selected="true"] { background: linear-gradient(135deg, #C2410C, #D9541C); }
+:root[data-theme="dark"] .tabs button[aria-selected="true"] { color: #fff; }
+.sec h2::before { content: ''; display: inline-block; width: 7px; height: .95em; border-radius: 4px; margin-right: 9px; vertical-align: -2px; background: linear-gradient(180deg, var(--accent), var(--accent3)); }
+#running { background: linear-gradient(160deg, var(--hero1), var(--hero2) 58%, var(--hero3)); box-shadow: 0 10px 28px rgba(91, 84, 232, .30); }
+
+/* 현황판 전광판: 이번 주(민트→하늘→보라) + 이번 달(장미→주황) */
+.hero { background: none; box-shadow: none; padding: 0; border-radius: 0; gap: 12px; }
+.hb { position: relative; overflow: hidden; border-radius: 22px; padding: 16px 18px 14px; color: #fff; display: flex; flex-direction: column; align-items: flex-start; gap: 5px; }
+.hb::after { content: ''; position: absolute; right: -34px; top: -34px; width: 140px; height: 140px; border-radius: 50%; background: rgba(255, 255, 255, .16); pointer-events: none; }
+.hb::before { content: ''; position: absolute; right: 38px; bottom: -46px; width: 96px; height: 96px; border-radius: 50%; background: rgba(255, 255, 255, .10); pointer-events: none; }
+.hw { background: linear-gradient(135deg, var(--hero1), var(--hero2) 58%, var(--hero3)); box-shadow: 0 10px 26px rgba(91, 84, 232, .30); }
+.hm { background: linear-gradient(135deg, var(--mo1), var(--mo2)); box-shadow: 0 10px 26px rgba(216, 30, 91, .28); }
+.hb .range, .hb .meta { color: #fff; background: rgba(0, 0, 0, .26); border-radius: 999px; padding: 2px 12px; font-size: 15px; position: relative; z-index: 1; }
+.hb .total { color: #fff; font-size: 80px; position: relative; z-index: 1; text-shadow: 0 2px 0 rgba(0, 0, 0, .10); }
+.hm .total { font-size: 62px; }
+.hb .total small { color: #fff; }
+
+/* 순위: 주간·월간 전환, 이전/다음 기간, 메달 색 */
+.rkhead { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.rkhead h2 { margin: 0; }
+.seg { display: flex; gap: 4px; background: var(--soft); padding: 4px; border-radius: 12px; }
+.seg button { min-height: 44px; min-width: 76px; padding: 0 14px; border: 0; border-radius: 9px; background: transparent; color: var(--ink); font: 700 17px var(--font-body); cursor: pointer; }
+.pernav { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.pernav button { min-width: 52px; min-height: 48px; border: 2px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--ink); font: 700 18px var(--font-body); cursor: pointer; }
+.pernav button:disabled { opacity: .35; cursor: default; }
+.perlbl { flex: 1; text-align: center; font-weight: 700; font-size: 18px; }
+.rk .no { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--soft); color: var(--ink); font: 700 20px/1 var(--font-num); justify-self: center; }
+.rk:first-child .no { color: var(--ink); }
+.rk.r1 .no { background: linear-gradient(135deg, #FFE066, #FFB300); color: #4A2F00; }
+.rk.r2 .no { background: linear-gradient(135deg, #E6EEF3, #B6C4CE); color: #1F3340; }
+.rk.r3 .no { background: linear-gradient(135deg, #FFC796, #EE8F4B); color: #4A2400; }
+.rk .bar i { background: linear-gradient(90deg, var(--accent), var(--accent2), var(--accent3)); }
+.rk.r1 .bar i { background: linear-gradient(90deg, #FFC93C, #FF8A3D, #FF3D6E); }
+.rk .sub { display: block; font-size: 14px; font-weight: 400; color: var(--muted); }
+.myweek { white-space: pre-line; }
 </style>
 <link rel="stylesheet" href="leaflet.css">
 </head>
@@ -574,6 +637,15 @@ h1 { letter-spacing: -.01em; }
     const dow = ((d + 3) % 7 + 7) % 7;
     return (d - dow) * DAY - KST;
   }
+  // First day 00:00 (Korea time) of the month containing ms, shifted by off months
+  function monthStart(ms, off) {
+    const d = new Date(ms + KST);
+    return Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + (off || 0), 1) - KST;
+  }
+  function monthLabel(ms) {
+    const d = new Date(ms + KST);
+    return d.getUTCFullYear() + '년 ' + (d.getUTCMonth() + 1) + '월';
+  }
   function whenLabel(ms, now) {
     const dd = kstDayNum(now) - kstDayNum(ms);
     const t = new Date(ms).toLocaleTimeString('ko-KR', { timeZone: 'Asia/Seoul', hour: 'numeric', minute: '2-digit' });
@@ -620,7 +692,7 @@ h1 { letter-spacing: -.01em; }
     return { members, runs, cheers };
   }
 
-  return { hav, newTrack, step, fmtKm, fmtDur, fmtPace, weekStart, whenLabel, dateLabel, sampleData, kstDayNum };
+  return { hav, newTrack, step, fmtKm, fmtDur, fmtPace, weekStart, monthStart, monthLabel, whenLabel, dateLabel, sampleData, kstDayNum };
 })();
 if (typeof module !== 'undefined') module.exports = RL;
 </script>
@@ -669,10 +741,20 @@ if (typeof module !== 'undefined') module.exports = RL;
     server: '서버에 문제가 생겼습니다. 잠시 뒤 다시 시도해 주세요.'
   };
   function errText(e) { if (e && e.error === 'forbidden' && e.message) return e.message; return (e && ERR[e.error]) || (e && e.message) || ERR.server; }
-  function weekly() {
-    var ws = RL.weekStart(now()), we = ws + 7 * 864e5, tot = {}, cnt = {};
-    allRuns().forEach(function (r) { if (r.at >= ws && r.at < we) { tot[r.uid] = (tot[r.uid] || 0) + r.km; cnt[r.uid] = (cnt[r.uid] || 0) + 1; } });
-    return { ws: ws, we: we, tot: tot, cnt: cnt };
+  function totalsBetween(s, e) {
+    var tot = {}, cnt = {};
+    allRuns().forEach(function (r) { if (r.at >= s && r.at < e) { tot[r.uid] = (tot[r.uid] || 0) + r.km; cnt[r.uid] = (cnt[r.uid] || 0) + 1; } });
+    return { ws: s, we: e, tot: tot, cnt: cnt };
+  }
+  function weekly() { var ws = RL.weekStart(now()); return totalsBetween(ws, ws + 7 * 864e5); }
+  function monthly() { var t = now(); return totalsBetween(RL.monthStart(t, 0), RL.monthStart(t, 1)); }
+  // 현황판 순위: 주간/월간 + 이전 기간 보기(off: 0=이번, -1=지난 …)
+  var boardMode = 'week', boardOff = 0, boardFocus = '';
+  try { if (localStorage.getItem('rl_board_mode') === 'month') boardMode = 'month'; } catch (_) {}
+  function boardPeriod() {
+    var t = now();
+    if (boardMode === 'month') return totalsBetween(RL.monthStart(t, boardOff), RL.monthStart(t, boardOff + 1));
+    var s = RL.weekStart(t) + boardOff * 7 * 864e5; return totalsBetween(s, s + 7 * 864e5);
   }
   function allRuns() { return S.pending.map(function (p) { return { id: p.rid, uid: S.uid, at: p.at, km: p.km, sec: p.sec, src: p.src, pending: true, route: p.route, hasRoute: !!p.route }; }).concat(S.runs); }
   function elapsedSec() { var end = R.phase === 'running' ? now() : R.endAt; return Math.max(0, (end - R.start - R.pausedTotal) / 1000); }
@@ -697,7 +779,7 @@ if (typeof module !== 'undefined') module.exports = RL;
     refresh: function () {
       return netFetch(API + (API.indexOf('?') < 0 ? '?' : '&') + 'action=state&_=' + now(), { method: 'GET' }).then(function (j) {
         if (!j || j.ok !== true) throw { error: 'server' };
-        S.skew = j.now - now(); S.members = j.members; S.runs = j.runs; S.live = j.live; S.cheers = j.cheers; S.admins = j.admins || []; S.notice = j.notice || null; S.msgs = j.msgs || []; S.ready = true; S.netErr = false; S.lastOk = now();
+        S.skew = j.now - now(); S.members = j.members; S.runs = j.runs; S.since = (typeof j.since === 'number') ? j.since : (j.runs.length >= 300 ? j.runs.reduce(function (m, r) { return Math.min(m, r.at); }, Infinity) : 0); S.live = j.live; S.cheers = j.cheers; S.admins = j.admins || []; S.notice = j.notice || null; S.msgs = j.msgs || []; S.ready = true; S.netErr = false; S.lastOk = now();
         if (S.me && !S.members[S.me.id]) { S.authErr = '등록 정보를 찾지 못했습니다. 다시 연결해 주세요.'; S.me = null; S.uid = null; jset(K_ME, null); }
       });
     },
@@ -768,13 +850,13 @@ if (typeof module !== 'undefined') module.exports = RL;
   // ---------- 마지막 현황판 보관 (시작할 때 서버를 기다리지 않고 바로 보여 주기 위함) ----------
   function saveCache() {
     if (!REMOTE || !S.lastOk || S.netErr) return;
-    jset(K_CACHE, { v: 1, api: API, at: now(), skew: S.skew, members: S.members, runs: S.runs, cheers: S.cheers, admins: S.admins, notice: S.notice, msgs: S.msgs });
+    jset(K_CACHE, { v: 1, api: API, at: now(), skew: S.skew, since: S.since || 0, members: S.members, runs: S.runs, cheers: S.cheers, admins: S.admins, notice: S.notice, msgs: S.msgs });
   }
   function loadCache() {
     var c = jget(K_CACHE, null);
     if (!c || c.v !== 1 || c.api !== API || !c.members || typeof c.members !== 'object' || !Array.isArray(c.runs)) return false;
     if (!Object.keys(c.members).length) return false;
-    S.members = c.members; S.runs = c.runs; S.cheers = c.cheers || {};
+    S.members = c.members; S.runs = c.runs; S.since = c.since || 0; S.cheers = c.cheers || {};
     S.admins = Array.isArray(c.admins) ? c.admins : []; S.notice = c.notice || null; S.msgs = Array.isArray(c.msgs) ? c.msgs : [];
     S.live = {}; S.skew = isFinite(c.skew) ? c.skew : 0; S.cacheAt = c.at || 0;
     return true;
@@ -1382,8 +1464,8 @@ if (typeof module !== 'undefined') module.exports = RL;
     }
     if (!boot && idle && !needReg) {
       $('greet').textContent = myName() + '님, 안녕하세요';
-      var w = weekly(), km = w.tot[S.uid] || 0, n = w.cnt[S.uid] || 0;
-      $('myWeek').textContent = n ? '이번 주 내 기록 ' + km.toFixed(1) + ' km · ' + n + '회' : '이번 주 아직 기록이 없습니다.';
+      var w = weekly(), km = w.tot[S.uid] || 0, n = w.cnt[S.uid] || 0, mo = monthly(), mk = mo.tot[S.uid] || 0, mn = mo.cnt[S.uid] || 0;
+      $('myWeek').textContent = (n ? '이번 주 내 기록 ' + km.toFixed(1) + ' km · ' + n + '회' : '이번 주 아직 기록이 없습니다.') + '\n' + (mn ? '이번 달 내 기록 ' + mk.toFixed(1) + ' km · ' + mn + '회' : '이번 달 아직 기록이 없습니다.');
     }
   }
 
@@ -1398,15 +1480,18 @@ if (typeof module !== 'undefined') module.exports = RL;
   }
   function renderBoard() {
     var el = $('p-board'); if (!el) return;
-    var w = weekly(), n = serverNow();
-    var rows = Object.keys(S.members).map(function (id) {
+    var wk = weekly(), mo = monthly(), w = boardPeriod(), n = serverNow();
+    var ids = Object.keys(S.members);
+    function agg(t) {
+      var o = { sum: 0, n: 0, act: 0 };
+      ids.forEach(function (id) { var c = t.cnt[id] || 0; o.sum += t.tot[id] || 0; o.n += c; if (c > 0) o.act++; });
+      return o;
+    }
+    var aw = agg(wk), am = agg(mo);
+    var rows = ids.map(function (id) {
       var m = S.members[id];
-      return { id: id, name: m.name || '이름 없음', sample: !!m.sample, km: w.tot[id] || 0, n: w.cnt[id] || 0 };
+      return { id: id, name: m.name || '이름 없음', sample: !!m.sample, km: w.tot[id] || 0, n: w.cnt[id] || 0, wkm: wk.tot[id] || 0, mkm: mo.tot[id] || 0 };
     }).sort(function (a, b) { return b.km - a.km || a.name.localeCompare(b.name, 'ko'); });
-    var sum = rows.reduce(function (s, r) { return s + r.km; }, 0);
-    var runsN = rows.reduce(function (s, r) { return s + r.n; }, 0);
-    var active = rows.filter(function (r) { return r.n > 0; }).length;
-    var max = Math.max.apply(null, rows.map(function (r) { return r.km; }).concat([0.0001]));
     var liveRows = Object.keys(S.live).map(function (id) { return { id: id, l: S.live[id] }; })
       .filter(function (x) { return x.l && n - x.l.updatedAt < LIVE_STALE; });
     var cheerCount = {}, cheerMine = {};
@@ -1416,9 +1501,13 @@ if (typeof module !== 'undefined') module.exports = RL;
     });
 
     var h = '';
-    h += '<div class="sec hero"><p class="range">이번 주 ' + esc(RL.dateLabel(w.ws)) + ' ~ ' + esc(RL.dateLabel(w.we - 1)) + '</p>' +
-      '<p class="total">' + sum.toFixed(1) + '<small>km</small></p>' +
-      '<p class="meta">함께 달린 거리 · ' + active + '명 · ' + runsN + '회</p></div>';
+    h += '<div class="sec hero">' +
+      '<div class="hb hw"><p class="range">이번 주 ' + esc(RL.dateLabel(wk.ws)) + ' ~ ' + esc(RL.dateLabel(wk.we - 1)) + '</p>' +
+      '<p class="total">' + aw.sum.toFixed(1) + '<small>km</small></p>' +
+      '<p class="meta">함께 달린 거리 · ' + aw.act + '명 · ' + aw.n + '회</p></div>' +
+      '<div class="hb hm"><p class="range">이번 달 ' + esc(RL.monthLabel(mo.ws)) + '</p>' +
+      '<p class="total">' + am.sum.toFixed(1) + '<small>km</small></p>' +
+      '<p class="meta">함께 달린 거리 · ' + am.act + '명 · ' + am.n + '회</p></div></div>';
 
     h += '<div class="sec"><h2>지금 뛰는 중</h2>';
     if (liveRows.length) {
@@ -1432,11 +1521,23 @@ if (typeof module !== 'undefined') module.exports = RL;
     h += '</div>';
     $('boardA').innerHTML = h; h = '';
 
-    h += '<div class="sec"><h2>이번 주 순위</h2>';
+    var isM = boardMode === 'month', max = Math.max.apply(null, rows.map(function (r) { return r.km; }).concat([0.0001]));
+    var rtitle = isM ? (boardOff === 0 ? '이번 달 순위' : boardOff === -1 ? '지난달 순위' : '월간 순위') : (boardOff === 0 ? '이번 주 순위' : boardOff === -1 ? '지난주 순위' : '주간 순위');
+    var plabel = isM ? RL.monthLabel(w.ws) : RL.dateLabel(w.ws) + ' ~ ' + RL.dateLabel(w.we - 1);
+    var oldest = allRuns().reduce(function (m, r) { return Math.min(m, r.at); }, Infinity);
+    var canPrev = oldest < w.ws, canNext = boardOff < 0;
+    h += '<div class="sec"><div class="rkhead"><h2>' + rtitle + '</h2>' +
+      '<div class="seg" role="group" aria-label="집계 기간">' +
+      '<button type="button" data-bmode="week" aria-pressed="' + !isM + '">주간</button>' +
+      '<button type="button" data-bmode="month" aria-pressed="' + isM + '">월간</button></div></div>' +
+      '<div class="pernav"><button type="button" data-boff="-1" aria-label="이전 ' + (isM ? '달' : '주') + '"' + (canPrev ? '' : ' disabled') + '>◀</button>' +
+      '<span class="perlbl">' + esc(plabel) + '</span>' +
+      '<button type="button" data-boff="1" aria-label="다음 ' + (isM ? '달' : '주') + '"' + (canNext ? '' : ' disabled') + '>▶</button></div>';
+    if (S.since && S.since > w.ws) h += '<p class="hint">※ 기록이 아주 많아 이 기간은 일부만 집계되었을 수 있습니다.</p>';
     if (rows.length) {
       h += '<ol class="list">' + rows.map(function (r, i) {
         var pct = r.km > 0 ? Math.max(3, Math.round(r.km / max * 100)) : 0;
-        return '<li class="rk' + (r.id === S.uid ? ' me' : '') + '"><span class="no">' + (r.km > 0 ? i + 1 : '–') + '</span><span class="nm">' + esc(r.name) + (r.id === S.uid ? '<span class="tag me">나</span>' : '') + chipFor('', r.sample) + '</span><span class="km"><b>' + r.km.toFixed(1) + '</b>km</span><span class="bar"><i style="width:' + pct + '%"></i></span></li>';
+        return '<li class="rk' + (r.id === S.uid ? ' me' : '') + (r.km > 0 && i < 3 ? ' r' + (i + 1) : '') + '"><span class="no">' + (r.km > 0 ? i + 1 : '–') + '</span><span class="nm">' + esc(r.name) + (r.id === S.uid ? '<span class="tag me">나</span>' : '') + chipFor('', r.sample) + (boardOff === 0 && (r.wkm > 0 || r.mkm > 0) ? '<small class="sub">' + (isM ? '이번 주 ' + r.wkm.toFixed(1) : '이번 달 ' + r.mkm.toFixed(1)) + ' km</small>' : '') + '</span><span class="km"><b>' + r.km.toFixed(1) + '</b>km</span><span class="bar"><i style="width:' + pct + '%"></i></span></li>';
       }).join('') + '</ol>';
     } else {
       h += '<div class="list"><p class="empty">아직 등록한 회원이 없습니다. 달리기 화면에서 이름을 등록해 주세요.</p></div>';
@@ -1462,6 +1563,7 @@ if (typeof module !== 'undefined') module.exports = RL;
     }
     h += '</div>';
     $('boardB').innerHTML = h;
+    if (boardFocus) { var fb = $('boardB').querySelector(boardFocus); if (fb && !fb.disabled) fb.focus(); boardFocus = ''; }
     renderNotice(); renderMsgs();
   }
 
@@ -1730,7 +1832,7 @@ if (typeof module !== 'undefined') module.exports = RL;
     var mv = mapView(pts, SZ), segs = toSegs(pts, dr.gi);
     var imgs = await Promise.all(mv.tiles.map(function (t) { return loadImg(tileUrl(mv.z, t)); }));
     var gotMap = imgs.some(function (x) { return !!x; });
-    var bg = g.createLinearGradient(0, 0, W, H); bg.addColorStop(0, '#087F69'); bg.addColorStop(1, '#0A67AE'); g.fillStyle = bg; g.fillRect(0, 0, W, H);
+    var bg = g.createLinearGradient(0, 0, W, H); bg.addColorStop(0, '#00846D'); bg.addColorStop(0.58, '#0C76C8'); bg.addColorStop(1, '#5B54E8'); g.fillStyle = bg; g.fillRect(0, 0, W, H);
     g.textAlign = 'center'; g.fillStyle = '#fff';
     var fs = 88; do { g.font = '700 ' + fs + 'px ' + F; fs -= 4; } while (g.measureText(it.title).width > 940 && fs > 36);
     g.fillText(it.title, W / 2, 160);
@@ -1851,7 +1953,7 @@ if (typeof module !== 'undefined') module.exports = RL;
       renderArt();
     }
   });
-  $('appVer').textContent = '2026.11.10-d';
+  $('appVer').textContent = '2026.11.14-a';
   $('apClose').addEventListener('click', function () { $('artPost').hidden = true; });
   $('artPost').addEventListener('click', function (e) { if (e.target === $('artPost')) $('artPost').hidden = true; });
   $('apRun').addEventListener('change', apPreview);
@@ -1900,6 +2002,10 @@ if (typeof module !== 'undefined') module.exports = RL;
       try { await B.deleteMsg(md.getAttribute('data-msgdel')); } catch (err) { toast(errText(err)); }
       renderMsgs(); return;
     }
+    var bm = e.target.closest('button[data-bmode]');
+    if (bm) { boardMode = bm.getAttribute('data-bmode') === 'month' ? 'month' : 'week'; boardOff = 0; try { localStorage.setItem('rl_board_mode', boardMode); } catch (_) {} boardFocus = 'button[data-bmode="' + boardMode + '"]'; renderBoard(); return; }
+    var bo = e.target.closest('button[data-boff]');
+    if (bo) { if (bo.disabled) return; boardOff = Math.min(0, boardOff + Number(bo.getAttribute('data-boff'))); boardFocus = 'button[data-boff="' + bo.getAttribute('data-boff') + '"]'; renderBoard(); return; }
     var mp = e.target.closest('button[data-route]');
     if (mp) { openRoute(mp.getAttribute('data-route')); return; }
     var c = e.target.closest('button[data-cheer]');
